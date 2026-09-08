@@ -29,3 +29,15 @@ class Client(models.Model):
 
     def __str__(self):
         return f'{self.last_name} {self.first_name} {self.patronymic}'.strip()
+
+
+class Section(models.Model):
+    name = models.CharField('Вид занятий (секция)', max_length=60, unique=True)
+
+    class Meta:
+        verbose_name = 'Секция'
+        verbose_name_plural = 'Секции'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
