@@ -41,3 +41,19 @@ class Section(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Trainer(models.Model):
+    last_name = models.CharField('Фамилия', max_length=50)
+    first_name = models.CharField('Имя', max_length=50)
+    patronymic = models.CharField('Отчество', max_length=50, blank=True)
+    phone = models.CharField('Телефон', max_length=20, blank=True)
+
+    class Meta:
+        verbose_name = 'Тренер'
+        verbose_name_plural = 'Тренеры'
+        ordering = ['last_name', 'first_name']
+
+    def __str__(self):
+        initials = ''.join(f'{x[0]}.' for x in (self.first_name, self.patronymic) if x)
+        return f'{self.last_name} {initials}'.strip()
