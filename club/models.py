@@ -70,3 +70,33 @@ class Hall(models.Model):
 
     def __str__(self):
         return f'Зал №{self.number}'
+
+
+class Group(models.Model):
+    """Группа занятий: секция + тренер + зал + день недели + время начала."""
+    section = models.ForeignKey(Section, verbose_name='Секция', on_delete=models.PROTECT, related_name='groups')
+    trainer = models.ForeignKey(Trainer, verbose_name='Тренер', on_delete=models.PROTECT, related_name='groups')
+    hall = models.ForeignKey(Hall, verbose_name='Зал', on_delete=models.PROTECT, related_name='groups')
+    weekday = models.PositiveSmallIntegerField('День недели', choices=list(enumerate(WEEKDAYS)))
+    start_time = models.TimeField('Начало')
+    # NULL допустим: при вставке без значения триггер БД устанавливает 60 минут
+    duration_min = models.PositiveSmallIntegerField('Длительность, мин', null=True, blank=True,
+                                                    validators=[MinValueValidator(10), MaxValueValidator(300)])
+    price = models.DecimalField('Стоимость занятия, ₽', max_digits=8, decimal_places=2,
+                                validators=[MinValueValidator(0)])
+
+    class Meta:
+        verbose_name = 'Группа'
+        verbose_name_plural = 'Группы'
+        ordering = ['weekday', 'start_time']
+
+    def __str__(self):
+        return f'{self.section}, {self.trainer}, {WEEKDAYS[self.weekday][:2]} {self.start_time:%H:%M}'
+
+    @property
+    def end_time(self):
+        minutes = self.duration_min or DEFAULT_DURATION
+        return (datetime.combine(date.today(), self.start_time) + timedelta(minutes=minutes)).time()
+
+    def active_count(self):
+        return self.enrollments.filter(status__in=Enrollment.OCCUPYING).count()
