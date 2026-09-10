@@ -57,3 +57,16 @@ class Trainer(models.Model):
     def __str__(self):
         initials = ''.join(f'{x[0]}.' for x in (self.first_name, self.patronymic) if x)
         return f'{self.last_name} {initials}'.strip()
+
+
+class Hall(models.Model):
+    number = models.PositiveSmallIntegerField('Номер зала', unique=True)
+    name = models.CharField('Название', max_length=60, blank=True)
+
+    class Meta:
+        verbose_name = 'Зал'
+        verbose_name_plural = 'Залы'
+        ordering = ['number']
+
+    def __str__(self):
+        return f'Зал №{self.number}'
