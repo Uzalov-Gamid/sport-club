@@ -132,3 +132,29 @@ class Enrollment(models.Model):
                 .exclude(pk=self.pk).count()
             if taken >= MAX_GROUP_SIZE:
                 raise ValidationError(f'В группе уже {MAX_GROUP_SIZE} человек — запись невозможна.')
+
+
+class Subscription(models.Model):
+    client = models.ForeignKey(Client, verbose_name='Клиент', on_delete=models.CASCADE, related_name='subscriptions')
+    discount_percent = models.PositiveSmallIntegerField(
+        'Скидка, %', validators=[MinValueValidator(3), MaxValueValidator(10)])
+    start_date = models.DateField('Начало')
+    end_date = models.DateField('Окончание')
+
+    class Meta:
+        verbose_name = 'Абонемент'
+        verbose_name_plural = 'Абонементы'
+        ordering = ['-start_date']
+        constraints = [
+            models.CheckConstraint(condition=Q(discount_percent__gte=3, discount_percent__lte=10),
+                                   name='discount_3_10'),
+            models.CheckConstraint(condition=Q(end_date__gte=models.F('start_date')), name='sub_dates'),
+        ]
+
+    def __str__(self):
+        return f'{self.client}: −{self.discount_percent}% ({self.start_date:%d.%m.%Y}–{self.end_date:%d.%m.%Y})'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError('Дата окончания раньше даты начала.')
