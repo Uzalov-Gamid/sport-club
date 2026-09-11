@@ -100,3 +100,35 @@ class Group(models.Model):
 
     def active_count(self):
         return self.enrollments.filter(status__in=Enrollment.OCCUPYING).count()
+
+
+class Enrollment(models.Model):
+    """Запись клиента в группу (предварительная или действующая)."""
+    class Status(models.TextChoices):
+        BOOKED = 'booked', 'Предварительная запись'
+        ACTIVE = 'active', 'Занимается'
+        CANCELLED = 'cancelled', 'Отменена'
+
+    OCCUPYING = ('booked', 'active')
+
+    client = models.ForeignKey(Client, verbose_name='Клиент', on_delete=models.CASCADE, related_name='enrollments')
+    group = models.ForeignKey(Group, verbose_name='Группа', on_delete=models.CASCADE, related_name='enrollments')
+    status = models.CharField('Статус', max_length=10, choices=Status.choices, default=Status.BOOKED)
+    created_at = models.DateField('Дата записи', default=date.today)
+
+    class Meta:
+        verbose_name = 'Запись на занятия'
+        verbose_name_plural = 'Записи на занятия'
+        ordering = ['-created_at']
+        constraints = [models.UniqueConstraint(fields=['client', 'group'], name='uniq_client_group')]
+
+    def __str__(self):
+        return f'{self.client} → {self.group}'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.status in self.OCCUPYING and self.group_id:
+            taken = Enrollment.objects.filter(group_id=self.group_id, status__in=self.OCCUPYING)\
+                .exclude(pk=self.pk).count()
+            if taken >= MAX_GROUP_SIZE:
+                raise ValidationError(f'В группе уже {MAX_GROUP_SIZE} человек — запись невозможна.')
