@@ -158,3 +158,18 @@ class Subscription(models.Model):
         from django.core.exceptions import ValidationError
         if self.start_date and self.end_date and self.end_date < self.start_date:
             raise ValidationError('Дата окончания раньше даты начала.')
+
+
+class Visit(models.Model):
+    enrollment = models.ForeignKey(Enrollment, verbose_name='Запись', on_delete=models.CASCADE, related_name='visits')
+    date = models.DateField('Дата занятия', default=date.today)
+    attended = models.BooleanField('Присутствовал', default=True)
+
+    class Meta:
+        verbose_name = 'Посещение'
+        verbose_name_plural = 'Посещения'
+        ordering = ['-date']
+        constraints = [models.UniqueConstraint(fields=['enrollment', 'date'], name='uniq_visit_day')]
+
+    def __str__(self):
+        return f'{self.enrollment.client}, {self.date:%d.%m.%Y}'
