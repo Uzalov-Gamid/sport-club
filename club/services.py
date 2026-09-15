@@ -27,3 +27,10 @@ def clients_by_section_and_gender():
             'women': active.filter(gender=Client.Gender.FEMALE).count(),
         })
     return rows
+
+
+def discount_on(client, on_date):
+    """Размер скидки (%) по действующему на дату абонементу, иначе 0."""
+    sub = Subscription.objects.filter(client=client, start_date__lte=on_date, end_date__gte=on_date) \
+        .order_by('-discount_percent').first()
+    return sub.discount_percent if sub else 0
