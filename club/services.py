@@ -34,3 +34,12 @@ def discount_on(client, on_date):
     sub = Subscription.objects.filter(client=client, start_date__lte=on_date, end_date__gte=on_date) \
         .order_by('-discount_percent').first()
     return sub.discount_percent if sub else 0
+
+
+def visit_cost(visit):
+    """Стоимость одного посещённого занятия с учётом скидки абонемента."""
+    if not visit.attended:
+        return Decimal('0.00')
+    price = Decimal(str(visit.enrollment.group.price))
+    percent = discount_on(visit.enrollment.client, visit.date)
+    return (price * (100 - percent) / 100).quantize(Decimal('0.01'))
