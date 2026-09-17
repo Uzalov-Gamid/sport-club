@@ -54,3 +54,14 @@ def client_cost(client, date_from=None, date_to=None):
         qs = qs.filter(date__lte=date_to)
     rows = [(v, visit_cost(v)) for v in qs.order_by('date')]
     return rows, sum((c for _, c in rows), Decimal('0.00'))
+
+
+def hall_schedule(hall):
+    """Данные выходного документа: расписание зала по дням недели."""
+    result = []
+    groups = hall.groups.select_related('section', 'trainer').order_by('weekday', 'start_time')
+    for day in range(7):
+        items = [(g.start_time, g.end_time, g) for g in groups if g.weekday == day]
+        if items:
+            result.append((WEEKDAYS[day], items))
+    return result
