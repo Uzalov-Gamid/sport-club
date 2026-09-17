@@ -43,3 +43,14 @@ def visit_cost(visit):
     price = Decimal(str(visit.enrollment.group.price))
     percent = discount_on(visit.enrollment.client, visit.date)
     return (price * (100 - percent) / 100).quantize(Decimal('0.01'))
+
+
+def client_cost(client, date_from=None, date_to=None):
+    """Стоимость занятий клиента за период: (список посещений со стоимостью, итог)."""
+    qs = Visit.objects.filter(enrollment__client=client).select_related('enrollment__group__section')
+    if date_from:
+        qs = qs.filter(date__gte=date_from)
+    if date_to:
+        qs = qs.filter(date__lte=date_to)
+    rows = [(v, visit_cost(v)) for v in qs.order_by('date')]
+    return rows, sum((c for _, c in rows), Decimal('0.00'))
