@@ -17,3 +17,9 @@ class ClientForm(forms.ModelForm):
         model = Client
         fields = '__all__'
         widgets = {'birth_date': DATE}
+
+
+class SectionForm(forms.ModelForm):
+    class Meta:
+        model = Section
+        fields = '__all__'
