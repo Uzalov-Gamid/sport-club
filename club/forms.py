@@ -29,3 +29,9 @@ class TrainerForm(forms.ModelForm):
     class Meta:
         model = Trainer
         fields = '__all__'
+
+
+class HallForm(forms.ModelForm):
+    class Meta:
+        model = Hall
+        fields = '__all__'
