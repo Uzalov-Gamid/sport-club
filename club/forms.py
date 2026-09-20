@@ -35,3 +35,11 @@ class HallForm(forms.ModelForm):
     class Meta:
         model = Hall
         fields = '__all__'
+
+
+class GroupForm(forms.ModelForm):
+    class Meta:
+        model = Group
+        fields = '__all__'
+        widgets = {'start_time': TIME}
+        help_texts = {'duration_min': 'Если не указать — БД установит 60 минут (триггер).'}
