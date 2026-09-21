@@ -50,3 +50,10 @@ class EnrollmentForm(forms.ModelForm):
         model = Enrollment
         fields = '__all__'
         widgets = {'created_at': DATE}
+
+
+class SubscriptionForm(forms.ModelForm):
+    class Meta:
+        model = Subscription
+        fields = '__all__'
+        widgets = {'start_date': DATE, 'end_date': DATE}
