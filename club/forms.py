@@ -43,3 +43,10 @@ class GroupForm(forms.ModelForm):
         fields = '__all__'
         widgets = {'start_time': TIME}
         help_texts = {'duration_min': 'Если не указать — БД установит 60 минут (триггер).'}
+
+
+class EnrollmentForm(forms.ModelForm):
+    class Meta:
+        model = Enrollment
+        fields = '__all__'
+        widgets = {'created_at': DATE}
