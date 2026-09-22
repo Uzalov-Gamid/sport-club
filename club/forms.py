@@ -64,3 +64,16 @@ class VisitForm(forms.ModelForm):
         model = Visit
         fields = '__all__'
         widgets = {'date': DATE}
+
+
+class OperatorCreateForm(UserCreationForm):
+    """Администратор добавляет новых пользователей с ролью «оператор»."""
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ('username', 'first_name', 'last_name')
+
+    def save(self, commit=True):
+        user = super().save(commit)
+        if commit:
+            user.groups.add(AuthGroup.objects.get_or_create(name=OPERATOR_GROUP)[0])
+        return user
