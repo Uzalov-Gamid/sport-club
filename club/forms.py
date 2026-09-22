@@ -57,3 +57,10 @@ class SubscriptionForm(forms.ModelForm):
         model = Subscription
         fields = '__all__'
         widgets = {'start_date': DATE, 'end_date': DATE}
+
+
+class VisitForm(forms.ModelForm):
+    class Meta:
+        model = Visit
+        fields = '__all__'
+        widgets = {'date': DATE}
