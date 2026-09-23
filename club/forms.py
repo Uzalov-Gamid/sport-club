@@ -77,3 +77,7 @@ class OperatorCreateForm(UserCreationForm):
         if commit:
             user.groups.add(AuthGroup.objects.get_or_create(name=OPERATOR_GROUP)[0])
         return user
+
+
+class ReportForm(forms.Form):
+    hall = forms.ModelChoiceField(queryset=Hall.objects.all(), label='Зал')
