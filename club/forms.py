@@ -81,3 +81,8 @@ class OperatorCreateForm(UserCreationForm):
 
 class ReportForm(forms.Form):
     hall = forms.ModelChoiceField(queryset=Hall.objects.all(), label='Зал')
+
+
+class CostForm(forms.Form):
+    date_from = forms.DateField(required=False, widget=DATE, label='С')
+    date_to = forms.DateField(required=False, widget=DATE, label='По')
