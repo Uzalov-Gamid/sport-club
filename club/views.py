@@ -115,3 +115,54 @@ def build_views(cfg):
                 return redirect(self.success_url)
 
     return List.as_view(), Create.as_view(), Edit.as_view(), Delete.as_view()
+
+
+# ---- Запросы, расчёт, выходной документ ----
+class GroupCountsView(OperatorRequired, View):
+    def get(self, request):
+        return render(request, 'club/q_groups.html', {'groups': services.groups_with_client_counts(),
+                                                      'today': date.today()})
+
+
+class SectionGenderView(OperatorRequired, View):
+    def get(self, request):
+        return render(request, 'club/q_gender.html', {'rows': services.clients_by_section_and_gender()})
+
+
+class ClientCostView(OperatorRequired, View):
+    def get(self, request, pk):
+        client = get_object_or_404(Client, pk=pk)
+        form = forms.CostForm(request.GET or None)
+        d1 = d2 = None
+        if form.is_valid():
+            d1, d2 = form.cleaned_data['date_from'], form.cleaned_data['date_to']
+        rows, total = services.client_cost(client, d1, d2)
+        return render(request, 'club/client_cost.html',
+                      {'client': client, 'form': form, 'rows': rows, 'total': total})
+
+
+class ScheduleReportView(OperatorRequired, View):
+    def get(self, request):
+        form = forms.ReportForm(request.GET or None)
+        ctx = {'form': form}
+        if form.is_valid():
+            hall = form.cleaned_data['hall']
+            ctx.update(hall=hall, schedule=services.hall_schedule(hall), today=date.today())
+        return render(request, 'club/report.html', ctx)
+
+
+class UserListView(AdminRequired, View):
+    def get(self, request):
+        from django.contrib.auth import get_user_model
+        return render(request, 'club/users.html', {'users': get_user_model().objects.order_by('username'),
+                                                   'form': forms.OperatorCreateForm()})
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        form = forms.OperatorCreateForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Оператор добавлен.')
+            return redirect('club:users')
+        return render(request, 'club/users.html', {'users': get_user_model().objects.order_by('username'),
+                                                   'form': form})
