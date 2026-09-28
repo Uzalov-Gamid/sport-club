@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}{{ cfg.title }}{% endblock %}
+{% block content %}
+<div class="card"><h2>{{ cfg.title }}: {% if object %}изменение{% else %}добавление{% endif %}</h2>
+<form method="post">{% csrf_token %}{{ form.as_p }}
+<button>Сохранить</button> <a class="btn gray" href="{% url 'club:'|add:cfg.key %}">Отмена</a></form></div>
+{% endblock %}

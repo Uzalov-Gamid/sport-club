@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card"><h2>Удалить «{{ object }}»?</h2>
+<form method="post">{% csrf_token %}<button class="red">Да, удалить</button>
+<a class="btn gray" href="{% url 'club:'|add:cfg.key %}">Отмена</a></form></div>
+{% endblock %}

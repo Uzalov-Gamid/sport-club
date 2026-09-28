@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}{{ cfg.title }}{% endblock %}
+{% block content %}
+<div class="card">
+  <p><a class="btn" href="{% url 'club:'|add:cfg.key|add:'_add' %}">+ Добавить</a> <a class="btn gray" href="{% url 'club:home' %}">В меню</a></p>
+  <table>
+    <tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}<th></th></tr>
+    {% for obj, cells in rows %}
+    <tr>{% for c in cells %}<td>{{ c }}</td>{% endfor %}
+      <td style="white-space:nowrap">
+        {% if cfg.key == 'clients' %}<a href="{% url 'club:client_cost' obj.pk %}">стоимость</a> {% endif %}
+        <a href="{% url 'club:'|add:cfg.key|add:'_edit' obj.pk %}">изменить</a>
+        <a href="{% url 'club:'|add:cfg.key|add:'_delete' obj.pk %}">удалить</a></td></tr>
+    {% empty %}<tr><td colspan="{{ headers|length|add:1 }}">Записей нет.</td></tr>{% endfor %}
+  </table>
+  {% if page_obj.has_other_pages %}<p>
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">←</a>{% endif %}
+    Страница {{ page_obj.number }} из {{ paginator.num_pages }}
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">→</a>{% endif %}</p>{% endif %}
+</div>
+{% endblock %}
