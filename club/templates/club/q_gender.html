@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}Клиенты по секциям{% endblock %}
+{% block content %}
+<div class="card"><h2>Текущие клиенты по видам занятий</h2>
+<table><tr><th>Вид занятий</th><th>Клиентов-мужчин</th><th>Клиентов-женщин</th></tr>
+{% for r in rows %}<tr><td>{{ r.section }}</td><td>{{ r.men }}</td><td>{{ r.women }}</td></tr>
+{% empty %}<tr><td colspan="3">Секций нет.</td></tr>{% endfor %}</table></div>
+{% endblock %}
