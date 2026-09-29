@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Расписание зала{% endblock %}
+{% block content %}
+<div class="card noprint"><form method="get">{{ form.hall.label }}: {{ form.hall }} <button>Сформировать</button></form></div>
+{% if hall %}
+<div class="card">
+  <p><button class="noprint" onclick="window.print()">Печать</button></p>
+  <table style="border:0"><tr><td style="border:0"><h2 style="margin:0">Зал №{{ hall.number }}</h2></td>
+  <td style="border:0;text-align:right">Дата распечатки: {{ today|date:"d.m.Y" }}</td></tr></table>
+  {% for day, items in schedule %}
+    <h3 style="margin-bottom:4px">{{ day }}</h3>
+    {% for start, end, g in items %}<div>{{ start|time:"H:i" }} – {{ end|time:"H:i" }} – {{ g.section }}, {{ g.trainer }}</div>{% endfor %}
+  {% empty %}<p>В этом зале занятий нет.</p>{% endfor %}
+</div>
+{% endif %}
+{% endblock %}
