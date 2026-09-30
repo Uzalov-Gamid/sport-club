@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Пользователи{% endblock %}
+{% block content %}
+<div class="card"><h2>Пользователи системы</h2>
+<table><tr><th>Логин</th><th>Имя</th><th>Роль</th></tr>
+{% for u in users %}<tr><td>{{ u.username }}</td><td>{{ u.get_full_name|default:"—" }}</td><td>{% if u.is_superuser %}Администратор{% else %}{% for g in u.groups.all %}{{ g.name }}{% empty %}—{% endfor %}{% endif %}</td></tr>{% endfor %}</table></div>
+<div class="card"><h3>Добавить оператора</h3>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button>Создать</button></form></div>
+{% endblock %}
