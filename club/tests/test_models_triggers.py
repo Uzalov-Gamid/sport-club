@@ -30,3 +30,43 @@ class DurationTriggerTests(BaseTestCase):
                   start_time=time(10, 0), duration_min=None, price=1)
         self.assertEqual(g.end_time, time(10, 0).replace(hour=11))
         self.assertEqual(DEFAULT_DURATION, 60)
+
+
+class CapacityTriggerTests(BaseTestCase):
+    def fill(self, n):
+        for i in range(n):
+            Enrollment.objects.create(client=self.make_client(i), group=self.group, status='active')
+
+    def test_ten_allowed(self):
+        self.fill(10)
+        self.assertEqual(self.group.active_count(), 10)
+
+    def test_eleventh_rejected_by_db_trigger(self):
+        self.fill(10)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Enrollment.objects.create(client=self.make_client(99), group=self.group)
+
+    def test_cancelled_does_not_occupy_place(self):
+        self.fill(9)
+        Enrollment.objects.create(client=self.make_client(50), group=self.group, status='cancelled')
+        Enrollment.objects.create(client=self.make_client(51), group=self.group, status='active')
+        self.assertEqual(self.group.active_count(), 10)
+
+    def test_reactivating_into_full_group_rejected(self):
+        self.fill(10)
+        e = Enrollment.objects.create(client=self.make_client(60), group=self.group, status='cancelled')
+        e.status = 'active'
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            e.save()
+
+    def test_model_clean_gives_friendly_error(self):
+        self.fill(10)
+        e = Enrollment(client=self.make_client(70), group=self.group, status='booked')
+        with self.assertRaises(ValidationError):
+            e.clean()
+
+    def test_same_client_twice_in_group_rejected(self):
+        c = self.make_client(1)
+        Enrollment.objects.create(client=c, group=self.group)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Enrollment.objects.create(client=c, group=self.group)
