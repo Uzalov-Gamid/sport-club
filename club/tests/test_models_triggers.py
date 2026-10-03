@@ -97,3 +97,14 @@ class SubscriptionConstraintTests(BaseTestCase):
                          start_date=date(2026, 1, 1), end_date=date(2026, 2, 1))
         with self.assertRaises(ValidationError):
             s.full_clean()
+
+
+class StrTests(BaseTestCase):
+    def test_trainer_str(self):
+        self.assertEqual(str(self.trainer), 'Петров С.И.')
+
+    def test_hall_str(self):
+        self.assertEqual(str(self.hall), 'Зал №1')
+
+    def test_group_str(self):
+        self.assertIn('Плавание', str(self.group))
