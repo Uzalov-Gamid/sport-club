@@ -70,3 +70,30 @@ class CapacityTriggerTests(BaseTestCase):
         Enrollment.objects.create(client=c, group=self.group)
         with self.assertRaises(IntegrityError), transaction.atomic():
             Enrollment.objects.create(client=c, group=self.group)
+
+
+class SubscriptionConstraintTests(BaseTestCase):
+    def make(self, percent, start=date(2026, 1, 1), end=date(2026, 12, 31)):
+        return Subscription.objects.create(client=self.make_client(), discount_percent=percent,
+                                           start_date=start, end_date=end)
+
+    def test_discount_bounds_ok(self):
+        self.make(3); self.make(10)
+
+    def test_discount_below_3_rejected_by_db(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self.make(2)
+
+    def test_discount_above_10_rejected_by_db(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self.make(11)
+
+    def test_end_before_start_rejected_by_db(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self.make(5, start=date(2026, 5, 1), end=date(2026, 4, 1))
+
+    def test_validator_rejects_out_of_range(self):
+        s = Subscription(client=self.make_client(), discount_percent=15,
+                         start_date=date(2026, 1, 1), end_date=date(2026, 2, 1))
+        with self.assertRaises(ValidationError):
+            s.full_clean()
