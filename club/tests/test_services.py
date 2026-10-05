@@ -77,3 +77,18 @@ class CostTests(BaseTestCase):
             Subscription.objects.create(client=self.c, discount_percent=p,
                                         start_date=self.today - timedelta(days=5), end_date=self.today + timedelta(days=5))
         self.assertEqual(services.discount_on(self.c, self.today), 7)
+
+
+class ScheduleTests(BaseTestCase):
+    def test_grouped_by_weekday_sorted(self):
+        from datetime import time
+        self.make_group(weekday=0, start_time=time(8, 0))
+        self.make_group(weekday=2, start_time=time(12, 0), duration_min=90)
+        sched = services.hall_schedule(self.hall)
+        self.assertEqual([d for d, _ in sched], ['Понедельник', 'Среда'])
+        self.assertEqual(sched[0][1][0][0], time(8, 0))
+        self.assertEqual(sched[1][1][0][1], time(13, 30))
+
+    def test_empty_hall(self):
+        from club.models import Hall
+        self.assertEqual(services.hall_schedule(Hall.objects.create(number=9)), [])
