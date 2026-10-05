@@ -38,3 +38,42 @@ class QueryTests(BaseTestCase):
         Enrollment.objects.create(client=self.m1, group=g3, status='active')
         rows = {r['section']: r for r in services.clients_by_section_and_gender()}
         self.assertEqual(rows['Плавание']['men'], 2)
+
+
+class CostTests(BaseTestCase):
+    def setUp(self):
+        self.c = self.make_client()
+        self.e = Enrollment.objects.create(client=self.c, group=self.group, status='active')
+        self.today = date.today()
+
+    def visit(self, days_ago, attended=True):
+        return Visit.objects.create(enrollment=self.e, date=self.today - timedelta(days=days_ago), attended=attended)
+
+    def test_no_subscription_full_price(self):
+        self.assertEqual(services.visit_cost(self.visit(1)), Decimal('500.00'))
+
+    def test_discount_applied(self):
+        Subscription.objects.create(client=self.c, discount_percent=10,
+                                    start_date=self.today - timedelta(days=30), end_date=self.today + timedelta(days=30))
+        self.assertEqual(services.visit_cost(self.visit(1)), Decimal('450.00'))
+
+    def test_expired_subscription_ignored(self):
+        Subscription.objects.create(client=self.c, discount_percent=10,
+                                    start_date=self.today - timedelta(days=90), end_date=self.today - timedelta(days=60))
+        self.assertEqual(services.visit_cost(self.visit(1)), Decimal('500.00'))
+
+    def test_missed_visit_free(self):
+        self.assertEqual(services.visit_cost(self.visit(1, attended=False)), Decimal('0.00'))
+
+    def test_total_and_period(self):
+        self.visit(10); self.visit(5)
+        rows, total = services.client_cost(self.c)
+        self.assertEqual((len(rows), total), (2, Decimal('1000.00')))
+        rows, total = services.client_cost(self.c, date_from=self.today - timedelta(days=6))
+        self.assertEqual((len(rows), total), (1, Decimal('500.00')))
+
+    def test_best_discount_chosen(self):
+        for p in (3, 7):
+            Subscription.objects.create(client=self.c, discount_percent=p,
+                                        start_date=self.today - timedelta(days=5), end_date=self.today + timedelta(days=5))
+        self.assertEqual(services.discount_on(self.c, self.today), 7)
