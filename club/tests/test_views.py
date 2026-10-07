@@ -120,3 +120,35 @@ class CrudTests(BaseTestCase):
         self.client.logout(); self.login(self.admin)
         self.client.post(reverse('club:trainers_delete', args=[self.trainer.pk]))
         self.assertTrue(type(self.trainer).objects.filter(pk=self.trainer.pk).exists())
+
+
+class QueryPagesTests(BaseTestCase):
+    def setUp(self):
+        self.login(self.operator)
+        Enrollment.objects.create(client=self.make_client(1, 'M'), group=self.group, status='active')
+        Enrollment.objects.create(client=self.make_client(2, 'F'), group=self.group, status='active')
+
+    def test_groups_query_page(self):
+        r = self.client.get(reverse('club:q_groups'))
+        self.assertContains(r, 'Плавание')
+        self.assertEqual(r.context['groups'][0].clients, 2)
+
+    def test_gender_query_page(self):
+        r = self.client.get(reverse('club:q_gender'))
+        row = next(x for x in r.context['rows'] if x['section'] == 'Плавание')
+        self.assertEqual((row['men'], row['women']), (1, 1))
+
+    def test_report_requires_hall(self):
+        r = self.client.get(reverse('club:report'))
+        self.assertNotIn('schedule', r.context)
+
+    def test_report_content(self):
+        r = self.client.get(reverse('club:report'), {'hall': self.hall.pk})
+        self.assertContains(r, 'Зал №1')
+        self.assertContains(r, 'Дата распечатки')
+        self.assertContains(r, 'Понедельник')
+        self.assertContains(r, '09:00 – 10:00')
+
+    def test_client_cost_page(self):
+        c = Client.objects.first()
+        self.assertContains(self.client.get(reverse('club:client_cost', args=[c.pk])), 'Итого')
