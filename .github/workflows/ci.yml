@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt coverage
+      - name: Django system check
+        run: python manage.py check
+      - name: Check migrations are up to date
+        run: python manage.py makemigrations --check --dry-run
+      - name: Run tests with coverage
+        run: |
+          coverage run --source=club manage.py test
+          coverage report --omit="*/tests/*,*/migrations/*" --fail-under=85
+
+  deploy-docs:
+    # CD: после успешных тестов на main собирается артефакт с готовым к запуску проектом
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package release
+        run: |
+          mkdir dist
+          git archive --format=zip --prefix=sport-club/ -o dist/sport-club-${GITHUB_SHA::7}.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sport-club-release
+          path: dist/*.zip
