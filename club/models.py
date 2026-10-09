@@ -4,6 +4,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator, RegexVa
 from django.db import models
 from django.db.models import Q
 
+from .compat import check_constraint
+
 MAX_GROUP_SIZE = 10
 DEFAULT_DURATION = 60
 WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
@@ -146,9 +148,8 @@ class Subscription(models.Model):
         verbose_name_plural = 'Абонементы'
         ordering = ['-start_date']
         constraints = [
-            models.CheckConstraint(condition=Q(discount_percent__gte=3, discount_percent__lte=10),
-                                   name='discount_3_10'),
-            models.CheckConstraint(condition=Q(end_date__gte=models.F('start_date')), name='sub_dates'),
+            check_constraint(Q(discount_percent__gte=3, discount_percent__lte=10), 'discount_3_10'),
+            check_constraint(Q(end_date__gte=models.F('start_date')), 'sub_dates'),
         ]
 
     def __str__(self):

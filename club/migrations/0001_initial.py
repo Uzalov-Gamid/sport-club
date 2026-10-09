@@ -5,6 +5,8 @@ import django.core.validators
 import django.db.models.deletion
 from django.db import migrations, models
 
+from club.compat import check_constraint
+
 
 class Migration(migrations.Migration):
 
@@ -376,18 +378,15 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="subscription",
-            constraint=models.CheckConstraint(
-                condition=models.Q(
-                    ("discount_percent__gte", 3), ("discount_percent__lte", 10)
-                ),
-                name="discount_3_10",
+            constraint=check_constraint(
+                models.Q(("discount_percent__gte", 3), ("discount_percent__lte", 10)),
+                "discount_3_10",
             ),
         ),
         migrations.AddConstraint(
             model_name="subscription",
-            constraint=models.CheckConstraint(
-                condition=models.Q(("end_date__gte", models.F("start_date"))),
-                name="sub_dates",
+            constraint=check_constraint(
+                models.Q(("end_date__gte", models.F("start_date"))), "sub_dates"
             ),
         ),
         migrations.AddConstraint(

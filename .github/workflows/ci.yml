@@ -10,7 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.12', '3.13']
+        include:
+          - python-version: '3.9'
+            django: '4.2.*'
+          - python-version: '3.12'
+            django: '5.2.*'
+          - python-version: '3.13'
+            django: '5.2.*'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,7 +24,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements.txt coverage
+        run: pip install "Django==${{ matrix.django }}" coverage
       - name: Django system check
         run: python manage.py check
       - name: Check migrations are up to date
