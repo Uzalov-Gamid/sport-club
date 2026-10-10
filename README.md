@@ -15,13 +15,13 @@ Django 4.2 LTS – 5.2 + SQLite (Python 3.9+).
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python manage.py migrate
-python manage.py seed_demo      # admin_club/admin12345, operator/operator12345
-python manage.py runserver
+python3 manage.py migrate
+python3 manage.py seed_demo      # admin_club/admin12345, operator/operator12345
+python3 manage.py runserver
 ```
 
 ## Тесты
 ```bash
-python manage.py test
+python3 manage.py test
 ```
 CI (GitHub Actions): проверка Django, актуальность миграций, тесты с порогом покрытия 85 %, сборка релизного архива на `main`.
