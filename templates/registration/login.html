@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% block title %}Вход{% endblock %}
-{% block content %}
-<div class="card" style="max-width:420px;margin:60px auto"><h2>Вход в систему</h2>
-<form method="post">{% csrf_token %}{{ form.as_p }}<button>Войти</button></form></div>
+{% block auth %}
+<div class="auth"><div class="box form">
+  <div class="logo">🏋</div>
+  <h1>Спортивный клуб</h1>
+  <p class="sub" style="text-align:center">Войдите, чтобы продолжить</p>
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn">Войти</button></form>
+</div></div>
 {% endblock %}
