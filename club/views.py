@@ -26,8 +26,15 @@ class AdminRequired(LoginRequiredMixin, UserPassesTestMixin):
 
 class HomeView(OperatorRequired, View):
     def get(self, request):
-        return render(request, 'club/home.html', {'role': roles.role_name(request.user),
-                                                  'is_admin': roles.is_admin(request.user)})
+        today = date.today()
+        stats = [
+            ('Клиентов', Client.objects.count(), '👥'),
+            ('Занимаются сейчас', Enrollment.objects.filter(status=Enrollment.Status.ACTIVE).count(), '🏃'),
+            ('Групп', Group.objects.count(), '🗓'),
+            ('Действующих абонементов', Subscription.objects.filter(
+                start_date__lte=today, end_date__gte=today).count(), '🎫'),
+        ]
+        return render(request, 'club/home.html', {'stats': stats})
 
 
 # ---- Универсальные CRUD-формы для таблиц ----

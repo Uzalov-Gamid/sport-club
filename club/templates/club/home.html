@@ -1,24 +1,28 @@
 {% extends 'base.html' %}
+{% block title %}Главная{% endblock %}
 {% block content %}
-<div class="card"><h2>Главное меню</h2><p>Вы вошли как: <b>{{ user.username }}</b> — роль: <b>{{ role }}</b></p></div>
+<h1>Добро пожаловать, {{ user.get_full_name|default:user.username }}</h1>
+<p class="sub">Вы вошли с ролью «{{ role_name }}»</p>
+<div class="stats">{% for label, value, icon in stats %}
+  <div class="stat"><b>{{ value }}</b><span>{{ icon }} {{ label }}</span></div>{% endfor %}</div>
 <h3>Данные</h3>
 <div class="tiles">
-  <a href="{% url 'club:clients' %}">Клиенты</a>
-  <a href="{% url 'club:enrollments' %}">Записи на занятия</a>
-  <a href="{% url 'club:visits' %}">Посещения</a>
-  <a href="{% url 'club:subscriptions' %}">Абонементы</a>
+  <a class="tile" href="{% url 'club:clients' %}"><i>👥</i>Клиенты</a>
+  <a class="tile" href="{% url 'club:enrollments' %}"><i>📝</i>Записи на занятия</a>
+  <a class="tile" href="{% url 'club:visits' %}"><i>✅</i>Посещения</a>
+  <a class="tile" href="{% url 'club:subscriptions' %}"><i>🎫</i>Абонементы</a>
   {% if is_admin %}
-  <a href="{% url 'club:groups' %}">Группы занятий</a>
-  <a href="{% url 'club:sections' %}">Секции</a>
-  <a href="{% url 'club:trainers' %}">Тренеры</a>
-  <a href="{% url 'club:halls' %}">Залы</a>
+  <a class="tile" href="{% url 'club:groups' %}"><i>🗓</i>Группы занятий</a>
+  <a class="tile" href="{% url 'club:sections' %}"><i>🏊</i>Секции</a>
+  <a class="tile" href="{% url 'club:trainers' %}"><i>🧑‍🏫</i>Тренеры</a>
+  <a class="tile" href="{% url 'club:halls' %}"><i>🏟</i>Залы</a>
   {% endif %}
 </div>
 <h3>Запросы и отчёты</h3>
 <div class="tiles">
-  <a href="{% url 'club:q_groups' %}">Группы и число клиентов</a>
-  <a href="{% url 'club:q_gender' %}">Клиенты по видам занятий (М/Ж)</a>
-  <a href="{% url 'club:report' %}">Расписание зала (печать)</a>
-  {% if is_admin %}<a href="{% url 'club:users' %}">Пользователи (операторы)</a>{% endif %}
+  <a class="tile" href="{% url 'club:q_groups' %}"><i>📊</i>Группы и число клиентов</a>
+  <a class="tile" href="{% url 'club:q_gender' %}"><i>⚥</i>Клиенты по видам занятий</a>
+  <a class="tile" href="{% url 'club:report' %}"><i>🖨</i>Расписание зала</a>
+  {% if is_admin %}<a class="tile" href="{% url 'club:users' %}"><i>🔑</i>Пользователи</a>{% endif %}
 </div>
 {% endblock %}
