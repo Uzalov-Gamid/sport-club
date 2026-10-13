@@ -1,15 +1,16 @@
 {% extends 'base.html' %}
 {% block title %}Расписание зала{% endblock %}
 {% block content %}
-<div class="card noprint"><form method="get">{{ form.hall.label }}: {{ form.hall }} <button>Сформировать</button></form></div>
+<h1 class="noprint">Расписание зала</h1><p class="sub noprint">Выходной документ для печати</p>
+<div class="card form noprint"><form method="get" class="toolbar" style="align-items:end">
+  <div>{{ form.hall.label_tag }}{{ form.hall }}</div><button class="btn">Сформировать</button></form></div>
 {% if hall %}
 <div class="card">
-  <p><button class="noprint" onclick="window.print()">Печать</button></p>
-  <table style="border:0"><tr><td style="border:0"><h2 style="margin:0">Зал №{{ hall.number }}</h2></td>
-  <td style="border:0;text-align:right">Дата распечатки: {{ today|date:"d.m.Y" }}</td></tr></table>
+  <p class="noprint"><button class="btn" onclick="window.print()">🖨 Печать</button></p>
+  <div class="sheet-head"><h2 style="margin:0">Зал №{{ hall.number }}</h2><span>Дата распечатки: {{ today|date:"d.m.Y" }}</span></div>
   {% for day, items in schedule %}
-    <h3 style="margin-bottom:4px">{{ day }}</h3>
-    {% for start, end, g in items %}<div>{{ start|time:"H:i" }} – {{ end|time:"H:i" }} – {{ g.section }}, {{ g.trainer }}</div>{% endfor %}
+    <div class="sheet-day">{{ day }}</div>
+    {% for start, end, g in items %}<div class="sheet-row">{{ start|time:"H:i" }} – {{ end|time:"H:i" }} – {{ g.section }}, {{ g.trainer }}</div>{% endfor %}
   {% empty %}<p>В этом зале занятий нет.</p>{% endfor %}
 </div>
 {% endif %}
