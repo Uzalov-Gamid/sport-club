@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
+{% block title %}Удаление{% endblock %}
 {% block content %}
-<div class="card"><h2>Удалить «{{ object }}»?</h2>
-<form method="post">{% csrf_token %}<button class="red">Да, удалить</button>
+<h1>Удалить запись?</h1><p class="sub">{{ cfg.title }}</p>
+<div class="card"><p>Будет удалено: <b>{{ object }}</b>. Действие нельзя отменить.</p>
+<form method="post">{% csrf_token %}<button class="btn red">Да, удалить</button>
 <a class="btn gray" href="{% url 'club:'|add:cfg.key %}">Отмена</a></form></div>
 {% endblock %}

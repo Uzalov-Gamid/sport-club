@@ -1,21 +1,28 @@
 {% extends 'base.html' %}
 {% block title %}{{ cfg.title }}{% endblock %}
 {% block content %}
+<h1>{{ cfg.title }}</h1>
+<p class="sub">Всего записей: {{ paginator.count }}</p>
 <div class="card">
-  <p><a class="btn" href="{% url 'club:'|add:cfg.key|add:'_add' %}">+ Добавить</a> <a class="btn gray" href="{% url 'club:home' %}">В меню</a></p>
-  <table>
-    <tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}<th></th></tr>
+  <div class="toolbar"><a class="btn" href="{% url 'club:'|add:cfg.key|add:'_add' %}">＋ Добавить</a></div>
+  <div class="tablewrap"><table>
+    <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}<th></th></tr></thead>
+    <tbody>
     {% for obj, cells in rows %}
-    <tr>{% for c in cells %}<td>{{ c }}</td>{% endfor %}
-      <td style="white-space:nowrap">
-        {% if cfg.key == 'clients' %}<a href="{% url 'club:client_cost' obj.pk %}">стоимость</a> {% endif %}
+    <tr>{% for c in cells %}<td>{% if c == 'Занимается' or c == 'да' %}<span class="badge ok">{{ c }}</span>
+        {% elif c == 'Предварительная запись' %}<span class="badge wait">{{ c }}</span>
+        {% elif c == 'Отменена' or c == 'нет' %}<span class="badge off">{{ c }}</span>
+        {% else %}{{ c }}{% endif %}</td>{% endfor %}
+      <td class="actions">
+        {% if cfg.key == 'clients' %}<a href="{% url 'club:client_cost' obj.pk %}">стоимость</a>{% endif %}
         <a href="{% url 'club:'|add:cfg.key|add:'_edit' obj.pk %}">изменить</a>
-        <a href="{% url 'club:'|add:cfg.key|add:'_delete' obj.pk %}">удалить</a></td></tr>
+        <a class="del" href="{% url 'club:'|add:cfg.key|add:'_delete' obj.pk %}">удалить</a></td></tr>
     {% empty %}<tr><td colspan="{{ headers|length|add:1 }}">Записей нет.</td></tr>{% endfor %}
-  </table>
-  {% if page_obj.has_other_pages %}<p>
-    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">←</a>{% endif %}
-    Страница {{ page_obj.number }} из {{ paginator.num_pages }}
-    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">→</a>{% endif %}</p>{% endif %}
+    </tbody>
+  </table></div>
+  {% if page_obj.has_other_pages %}<div class="pager">
+    {% if page_obj.has_previous %}<a class="btn gray" href="?page={{ page_obj.previous_page_number }}">← Назад</a>{% endif %}
+    <span>Страница {{ page_obj.number }} из {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a class="btn gray" href="?page={{ page_obj.next_page_number }}">Вперёд →</a>{% endif %}</div>{% endif %}
 </div>
 {% endblock %}
