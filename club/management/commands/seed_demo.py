@@ -2,7 +2,7 @@ from datetime import date, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group as AuthGroup
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from club.models import Client, Enrollment, Group, Hall, Section, Subscription, Trainer, Visit
 from club.roles import ADMIN_GROUP, OPERATOR_GROUP
@@ -13,7 +13,18 @@ User = get_user_model()
 class Command(BaseCommand):
     help = 'Создаёт демонстрационные данные'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--superuser', help='логин суперпользователя (администратора)')
+        parser.add_argument('--password', help='пароль суперпользователя')
+
     def handle(self, *args, **options):
+        if options['superuser']:
+            if not options['password']:
+                raise CommandError('Для --superuser нужен --password')
+            su, _ = User.objects.get_or_create(username=options['superuser'])
+            su.is_staff = su.is_superuser = True
+            su.set_password(options['password']); su.save()
+            self.stdout.write(f'Суперпользователь {su.username} создан/обновлён.')
         admin, _ = User.objects.get_or_create(username='admin_club', defaults={'first_name': 'Администратор'})
         admin.set_password('admin12345'); admin.save()
         admin.groups.add(AuthGroup.objects.get_or_create(name=ADMIN_GROUP)[0])
