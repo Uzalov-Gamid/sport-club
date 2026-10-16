@@ -20,6 +20,11 @@ python3 manage.py seed_demo      # admin_club/admin12345, operator/operator12345
 python3 manage.py runserver
 ```
 
+Собственный суперпользователь (администратор):
+```bash
+python3 manage.py seed_demo --superuser ЛОГИН --password ПАРОЛЬ
+```
+
 ## Тесты
 ```bash
 python3 manage.py test
