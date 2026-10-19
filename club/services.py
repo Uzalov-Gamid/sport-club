@@ -65,3 +65,15 @@ def hall_schedule(hall):
         if items:
             result.append((WEEKDAYS[day], items))
     return result
+
+
+def week_timetable():
+    """Сетка расписания на неделю: 7 колонок (дни), в каждой группы по времени с заполненностью."""
+    groups = list(groups_with_client_counts().order_by('weekday', 'start_time'))
+    for g in groups:
+        g.color = g.section_id % 6          # цвет карточки зависит от секции
+    days = []
+    for day in range(7):
+        items = [g for g in groups if g.weekday == day]
+        days.append({'name': WEEKDAYS[day], 'short': WEEKDAYS[day][:2], 'groups': items})
+    return days
