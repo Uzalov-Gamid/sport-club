@@ -9,7 +9,7 @@ from django.views import View
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
 from . import forms, roles, services
-from .models import Client, Enrollment, Group, Hall, Section, Subscription, Trainer, Visit
+from .models import WEEKDAYS, Client, Enrollment, Group, Hall, Section, Subscription, Trainer, Visit
 
 
 class OperatorRequired(LoginRequiredMixin, UserPassesTestMixin):
@@ -34,7 +34,14 @@ class HomeView(OperatorRequired, View):
             ('Действующих абонементов', Subscription.objects.filter(
                 start_date__lte=today, end_date__gte=today).count(), '🎫'),
         ]
-        return render(request, 'club/home.html', {'stats': stats})
+        fill = [{'name': str(g.section), 'hall': str(g.hall), 'when': f'{WEEKDAYS[g.weekday][:2]} {g.start_time:%H:%M}',
+                 'n': g.clients, 'pct': g.clients * 10} for g in services.groups_with_client_counts()]
+        by_gender = services.clients_by_section_and_gender()
+        for row in by_gender:
+            total = row['men'] + row['women']
+            row['men_pct'] = round(row['men'] * 100 / total) if total else 0
+            row['women_pct'] = 100 - row['men_pct'] if total else 0
+        return render(request, 'club/home.html', {'stats': stats, 'fill': fill, 'by_gender': by_gender})
 
 
 # ---- Универсальные CRUD-формы для таблиц ----
@@ -156,6 +163,11 @@ class ScheduleReportView(OperatorRequired, View):
             hall = form.cleaned_data['hall']
             ctx.update(hall=hall, schedule=services.hall_schedule(hall), today=date.today())
         return render(request, 'club/report.html', ctx)
+
+
+class TimetableView(OperatorRequired, View):
+    def get(self, request):
+        return render(request, 'club/timetable.html', {'days': services.week_timetable()})
 
 
 class UserListView(AdminRequired, View):

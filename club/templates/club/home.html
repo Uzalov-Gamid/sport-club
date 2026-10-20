@@ -5,6 +5,18 @@
 <p class="sub">Вы вошли с ролью «{{ role_name }}»</p>
 <div class="stats">{% for label, value, icon in stats %}
   <div class="stat"><b>{{ value }}</b><span>{{ icon }} {{ label }}</span></div>{% endfor %}</div>
+<div class="grid2">
+  <div class="card"><h2>Заполненность групп</h2>
+    {% for f in fill %}<div class="bar"><span class="lbl" title="{{ f.name }}, {{ f.hall }}">{{ f.name }} · {{ f.when }}</span>
+      <span class="track"><span class="fill{% if f.n >= 10 %} full{% endif %}" style="width:{{ f.pct }}%"></span></span><span class="num">{{ f.n }}/10</span></div>
+    {% empty %}<p class="empty">Групп пока нет.</p>{% endfor %}</div>
+  <div class="card"><h2>Клиенты по секциям</h2>
+    {% for r in by_gender %}<div class="bar"><span class="lbl">{{ r.section }}</span>
+      <span class="track"><span class="seg-m" style="width:{{ r.men_pct }}%"></span><span class="seg-f" style="width:{{ r.women_pct }}%"></span></span>
+      <span class="num">{{ r.men }}/{{ r.women }}</span></div>
+    {% empty %}<p class="empty">Секций пока нет.</p>{% endfor %}
+    <div class="legend"><span><i style="background:#3b82f6"></i>мужчины</span><span><i style="background:#ec4899"></i>женщины</span></div></div>
+</div>
 <h3>Данные</h3>
 <div class="tiles">
   <a class="tile" href="{% url 'club:clients' %}"><i>👥</i>Клиенты</a>
@@ -20,6 +32,7 @@
 </div>
 <h3>Запросы и отчёты</h3>
 <div class="tiles">
+  <a class="tile" href="{% url 'club:timetable' %}"><i>📅</i>Расписание недели</a>
   <a class="tile" href="{% url 'club:q_groups' %}"><i>📊</i>Группы и число клиентов</a>
   <a class="tile" href="{% url 'club:q_gender' %}"><i>⚥</i>Клиенты по видам занятий</a>
   <a class="tile" href="{% url 'club:report' %}"><i>🖨</i>Расписание зала</a>
