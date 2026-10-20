@@ -57,6 +57,23 @@
     .auth .box{background:#fff;border-radius:18px;padding:34px;width:100%;max-width:400px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
     .auth .logo{font-size:42px;text-align:center}.auth h1{text-align:center;font-size:24px}.auth .btn{width:100%;margin-top:6px;padding:11px}
     .auth input{max-width:none}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .bar{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:14px}
+    .bar .lbl{width:210px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bar .track{flex:1;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;display:flex}
+    .bar .fill{height:100%;background:linear-gradient(90deg,var(--g600),#4ade80)}.bar .fill.full{background:linear-gradient(90deg,#f59e0b,#ef4444)}
+    .bar .num{width:48px;text-align:right;color:var(--mute);flex:none}
+    .seg-m{background:#3b82f6;height:100%}.seg-f{background:#ec4899;height:100%}
+    .legend{display:flex;gap:16px;font-size:13px;color:var(--mute);margin-top:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+    .week{display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));gap:10px;overflow-x:auto}
+    .day{background:#fff;border-radius:12px;padding:10px;box-shadow:0 1px 2px rgba(0,0,0,.06);min-height:220px}
+    .day h4{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute)}
+    .slot{border-radius:9px;padding:8px 9px;margin-bottom:8px;font-size:13px;border-left:4px solid}
+    .slot b{display:block;font-size:14px}.slot small{display:block;color:#374151}
+    .c0{background:#dcfce7;border-color:#16a34a}.c1{background:#dbeafe;border-color:#2563eb}.c2{background:#fef3c7;border-color:#d97706}
+    .c3{background:#fce7f3;border-color:#db2777}.c4{background:#ede9fe;border-color:#7c3aed}.c5{background:#e0f2fe;border-color:#0891b2}
+    .empty{color:#9ca3af;font-size:13px}
+    @media(max-width:1100px){.grid2{grid-template-columns:1fr}}
     @media(max-width:820px){.layout{flex-direction:column}.sidebar{width:100%;height:auto;position:static}.content{padding:18px 14px}}
     @media print{.sidebar,.noprint{display:none!important}body{background:#fff}.content{padding:0}.card{box-shadow:none}}
   </style>
@@ -81,6 +98,7 @@
       <a href="{% url 'club:trainers' %}" class="{% if 'trainers' in n %}active{% endif %}">Тренеры</a>
       <a href="{% url 'club:halls' %}" class="{% if 'halls' in n %}active{% endif %}">Залы</a>
       {% endif %}
+      <a href="{% url 'club:timetable' %}" class="{% if n == 'timetable' %}active{% endif %}">Расписание недели</a>
       <div class="nav-title">Запросы и отчёты</div>
       <a href="{% url 'club:q_groups' %}" class="{% if n == 'q_groups' %}active{% endif %}">Группы и клиенты</a>
       <a href="{% url 'club:q_gender' %}" class="{% if n == 'q_gender' %}active{% endif %}">Клиенты по секциям (М/Ж)</a>

@@ -9,6 +9,7 @@ urlpatterns = [
     path('queries/groups/', views.GroupCountsView.as_view(), name='q_groups'),
     path('queries/gender/', views.SectionGenderView.as_view(), name='q_gender'),
     path('clients/<int:pk>/cost/', views.ClientCostView.as_view(), name='client_cost'),
+    path('timetable/', views.TimetableView.as_view(), name='timetable'),
     path('report/schedule/', views.ScheduleReportView.as_view(), name='report'),
     path('users/', views.UserListView.as_view(), name='users'),
 ]

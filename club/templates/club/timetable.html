@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Расписание недели{% endblock %}
+{% block content %}
+<h1>Расписание недели</h1><p class="sub">Группы по дням недели; в карточке — тренер, зал и заполненность</p>
+<div class="week">
+{% for d in days %}
+  <div class="day"><h4>{{ d.name }}</h4>
+  {% for g in d.groups %}
+    <div class="slot c{{ g.color }}">
+      <b>{{ g.start_time|time:"H:i" }}–{{ g.end_time|time:"H:i" }}</b>
+      {{ g.section }}<small>{{ g.trainer }} · {{ g.hall }}</small>
+      <small>{{ g.clients }} / 10 чел.</small>
+    </div>
+  {% empty %}<span class="empty">нет занятий</span>{% endfor %}
+  </div>
+{% endfor %}
+</div>
+{% endblock %}
