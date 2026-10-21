@@ -152,3 +152,24 @@ class QueryPagesTests(BaseTestCase):
     def test_client_cost_page(self):
         c = Client.objects.first()
         self.assertContains(self.client.get(reverse('club:client_cost', args=[c.pk])), 'Итого')
+
+
+class TimetableAndDashboardTests(BaseTestCase):
+    def test_timetable_page(self):
+        self.login(self.operator)
+        r = self.client.get(reverse('club:timetable'))
+        self.assertContains(r, 'Понедельник')
+        self.assertContains(r, '09:00–10:00')
+
+    def test_timetable_requires_login(self):
+        self.assertEqual(self.client.get(reverse('club:timetable')).status_code, 302)
+
+    def test_home_dashboard_bars(self):
+        Enrollment.objects.create(client=self.make_client(1, 'M'), group=self.group, status='active')
+        Enrollment.objects.create(client=self.make_client(2, 'F'), group=self.group, status='active')
+        self.login(self.operator)
+        r = self.client.get('/')
+        self.assertContains(r, 'Заполненность групп')
+        row = next(x for x in r.context['by_gender'] if x['section'] == 'Плавание')
+        self.assertEqual((row['men_pct'], row['women_pct']), (50, 50))
+        self.assertEqual(r.context['fill'][0]['pct'], 20)

@@ -92,3 +92,17 @@ class ScheduleTests(BaseTestCase):
     def test_empty_hall(self):
         from club.models import Hall
         self.assertEqual(services.hall_schedule(Hall.objects.create(number=9)), [])
+
+
+class TimetableTests(BaseTestCase):
+    def test_week_has_seven_days_with_groups_in_time_order(self):
+        from datetime import time
+        self.make_group(weekday=0, start_time=time(8, 0))
+        days = services.week_timetable()
+        self.assertEqual(len(days), 7)
+        self.assertEqual([g.start_time for g in days[0]['groups']], [time(8, 0), time(9, 0)])
+        self.assertEqual(days[3]['groups'], [])
+
+    def test_group_color_depends_on_section(self):
+        days = services.week_timetable()
+        self.assertEqual(days[0]['groups'][0].color, self.swim.pk % 6)
