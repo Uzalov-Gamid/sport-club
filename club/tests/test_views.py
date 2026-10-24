@@ -237,7 +237,7 @@ class SubscriptionTests(BaseTestCase):
         Visit.objects.create(enrollment=e, date=date(2026, 10, 5), attended=True)
         Subscription.objects.create(client=self.c, discount_percent=10, start_date=date(2026, 10, 1), end_date=date(2026, 12, 1))
         r = self.client.get(reverse('club:client', args=[self.c.pk]), {'date_from': '2026-10-01', 'date_to': '2026-10-31'})
-        self.assertContains(r, '450.00')
+        self.assertContains(r, '450,00')
 
 
 class GroupAndCatalogTests(BaseTestCase):
@@ -338,3 +338,110 @@ class TimetableAndDashboardTests(BaseTestCase):
         self.login(self.operator)
         r = self.client.get('/')
         self.assertIn(g, list(r.context['todays']))
+
+
+class ClientCabinetTests(BaseTestCase):
+    def setUp(self):
+        self.c = self.make_client(1)
+        self.e = Enrollment.objects.create(client=self.c, group=self.group, status='active')
+
+    def give_access(self):
+        self.login(self.operator)
+        self.client.post(reverse('club:client_access_add', args=[self.c.pk]),
+                         {'username': 'cl1', 'password1': 'Str0ngPass!77', 'password2': 'Str0ngPass!77'})
+        self.client.logout()
+        self.c.refresh_from_db()
+
+    def test_operator_creates_access_and_client_logs_in(self):
+        self.give_access()
+        self.assertEqual(self.c.user.username, 'cl1')
+        self.assertTrue(self.c.user.groups.filter(name='Клиент').exists())
+        r = self.client.post(reverse('login'), {'username': 'cl1', 'password': 'Str0ngPass!77'})
+        self.assertRedirects(r, reverse('club:home'), fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(reverse('club:home')), reverse('club:me'))
+
+    def test_client_sees_only_cabinet(self):
+        self.give_access()
+        self.client.login(username='cl1', password='Str0ngPass!77')
+        self.assertContains(self.client.get(reverse('club:me')), 'Привет, Тест')
+        for name in ('clients', 'timetable', 'reports'):
+            self.assertEqual(self.client.get(reverse(f'club:{name}')).status_code, 403, name)
+        self.assertEqual(self.client.post(reverse('club:visit_mark', args=[self.e.pk]), {'attended': '1'}).status_code, 403)
+
+    def test_operator_cannot_open_cabinet(self):
+        self.login(self.operator)
+        self.assertEqual(self.client.get(reverse('club:me')).status_code, 403)
+
+    def test_duplicate_access_rejected_and_removed(self):
+        self.give_access()
+        self.login(self.operator)
+        self.client.post(reverse('club:client_access_add', args=[self.c.pk]),
+                         {'username': 'cl2', 'password1': 'Str0ngPass!77', 'password2': 'Str0ngPass!77'})
+        self.assertFalse(User.objects.filter(username='cl2').exists())
+        self.client.post(reverse('club:client_access_delete', args=[self.c.pk]))
+        self.assertFalse(User.objects.filter(username='cl1').exists())
+
+    def test_checkin_inside_window(self):
+        from datetime import datetime
+        from unittest import mock
+        from zoneinfo import ZoneInfo
+        self.give_access()
+        self.client.login(username='cl1', password='Str0ngPass!77')
+        monday_9_10 = datetime(2026, 10, 26, 9, 10, tzinfo=ZoneInfo('Europe/Moscow'))   # понедельник, группа 09:00-10:00
+        with mock.patch('club.services.local_now', return_value=monday_9_10), \
+                mock.patch('club.views.timezone.localdate', return_value=monday_9_10.date()):
+            self.assertContains(self.client.get(reverse('club:me')), 'Я на занятии')
+            self.client.post(reverse('club:me_checkin', args=[self.e.pk]))
+        v = Visit.objects.get()
+        self.assertTrue(v.attended and v.self_marked)
+        self.assertEqual(v.date, monday_9_10.date())
+
+    def test_checkin_outside_window_rejected(self):
+        from datetime import datetime
+        from unittest import mock
+        from zoneinfo import ZoneInfo
+        self.give_access()
+        self.client.login(username='cl1', password='Str0ngPass!77')
+        early = datetime(2026, 10, 26, 8, 30, tzinfo=ZoneInfo('Europe/Moscow'))
+        wrong_day = datetime(2026, 10, 27, 9, 30, tzinfo=ZoneInfo('Europe/Moscow'))
+        for when in (early, wrong_day):
+            with mock.patch('club.services.local_now', return_value=when):
+                self.client.post(reverse('club:me_checkin', args=[self.e.pk]))
+        self.assertFalse(Visit.objects.exists())
+
+    def test_cannot_check_in_for_other_client(self):
+        other = Enrollment.objects.create(client=self.make_client(2), group=self.group, status='active')
+        self.give_access()
+        self.client.login(username='cl1', password='Str0ngPass!77')
+        self.assertEqual(self.client.post(reverse('club:me_checkin', args=[other.pk])).status_code, 404)
+
+    def test_client_cannot_override_operator_mark(self):
+        from datetime import datetime
+        from unittest import mock
+        from zoneinfo import ZoneInfo
+        self.give_access()
+        self.client.login(username='cl1', password='Str0ngPass!77')
+        when = datetime(2026, 10, 26, 9, 10, tzinfo=ZoneInfo('Europe/Moscow'))
+        Visit.objects.create(enrollment=self.e, date=when.date(), attended=False)
+        with mock.patch('club.services.local_now', return_value=when), \
+                mock.patch('club.views.timezone.localdate', return_value=when.date()):
+            self.client.post(reverse('club:me_checkin', args=[self.e.pk]))
+        self.assertFalse(Visit.objects.get().attended)
+
+    def test_operator_save_clears_self_mark(self):
+        Visit.objects.create(enrollment=self.e, date=date(2026, 10, 5), attended=True, self_marked=True)
+        self.login(self.operator)
+        self.client.post(reverse('club:group_attendance', args=[self.group.pk]), {'date': '2026-10-05'})
+        v = Visit.objects.get()
+        self.assertFalse(v.attended or v.self_marked)
+
+
+class PwaTests(BaseTestCase):
+    def test_manifest_and_service_worker_public(self):
+        r = self.client.get(reverse('manifest'))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['display'], 'standalone')
+        self.assertEqual(self.client.get(reverse('sw')).status_code, 200)
+
+    def test_login_page_links_manifest(self):
+        self.assertContains(self.client.get(reverse('login')), 'manifest.webmanifest')

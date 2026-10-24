@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 
+from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models import Q
@@ -9,6 +10,7 @@ from .compat import check_constraint
 MAX_GROUP_SIZE = 10
 DEFAULT_DURATION = 60
 WEEKDAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+WEEKDAYS_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
 
 class Client(models.Model):
@@ -23,6 +25,11 @@ class Client(models.Model):
     birth_date = models.DateField('Дата рождения')
     phone = models.CharField('Телефон', max_length=20,
                              validators=[RegexValidator(r'^[+\d][\d\s()\-]{5,}$', 'Неверный формат телефона')])
+    email = models.EmailField('E-mail', blank=True)
+    note = models.TextField('Заметка', blank=True, help_text='Например: противопоказания, пожелания, откуда узнал о клубе')
+    joined = models.DateField('Клиент с', default=date.today, editable=False)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, verbose_name='Учётная запись', null=True, blank=True,
+                                on_delete=models.SET_NULL, related_name='client_profile', editable=False)
 
     class Meta:
         verbose_name = 'Клиент'
@@ -31,6 +38,11 @@ class Client(models.Model):
 
     def __str__(self):
         return f'{self.last_name} {self.first_name} {self.patronymic}'.strip()
+
+    @property
+    def age(self):
+        today = date.today()
+        return today.year - self.birth_date.year - ((today.month, today.day) < (self.birth_date.month, self.birth_date.day))
 
 
 class Section(models.Model):
@@ -92,8 +104,12 @@ class Group(models.Model):
         verbose_name_plural = 'Группы'
         ordering = ['weekday', 'start_time']
 
+    @property
+    def weekday_short(self):
+        return WEEKDAYS_SHORT[self.weekday]
+
     def __str__(self):
-        return f'{self.section}, {self.trainer}, {WEEKDAYS[self.weekday][:2]} {self.start_time:%H:%M}'
+        return f'{self.section}, {self.trainer}, {self.weekday_short} {self.start_time:%H:%M}'
 
     @property
     def end_time(self):
@@ -165,6 +181,7 @@ class Visit(models.Model):
     enrollment = models.ForeignKey(Enrollment, verbose_name='Запись', on_delete=models.CASCADE, related_name='visits')
     date = models.DateField('Дата занятия', default=date.today)
     attended = models.BooleanField('Присутствовал', default=True)
+    self_marked = models.BooleanField('Отметил сам клиент', default=False)
 
     class Meta:
         verbose_name = 'Посещение'

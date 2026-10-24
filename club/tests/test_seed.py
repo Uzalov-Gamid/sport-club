@@ -36,5 +36,5 @@ class SeedCommandTests(TestCase):
         call_command('seed_demo', stdout=open('/dev/null', 'w'))
         self.client.login(username='operator', password='operator12345')
         r = self.client.get('/')
-        self.assertContains(r, 'Занимаются сейчас')
+        self.assertContains(r, 'Занимаются')
         self.assertContains(r, 'Оператор')

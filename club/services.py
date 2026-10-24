@@ -1,10 +1,11 @@
 """Бизнес-логика: запросы по заданию, расчёт стоимости, расписание залов."""
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.db.models import Count, Q
+from django.utils import timezone
 
-from .models import WEEKDAYS, Client, Enrollment, Group, Section, Subscription, Visit
+from .models import WEEKDAYS, WEEKDAYS_SHORT, Client, Enrollment, Group, Section, Subscription, Visit
 
 
 def groups_with_client_counts(on_date=None):
@@ -67,13 +68,66 @@ def hall_schedule(hall):
     return result
 
 
-def week_timetable():
-    """Сетка расписания на неделю: 7 колонок (дни), в каждой группы по времени с заполненностью."""
+def week_timetable(today=None):
+    """Сетка расписания на текущую неделю: 7 колонок (дни), в каждой группы по времени с заполненностью."""
+    today = today or date.today()
+    monday = today - timedelta(days=today.weekday())
     groups = list(groups_with_client_counts().order_by('weekday', 'start_time'))
     for g in groups:
         g.color = g.section_id % 6          # цвет карточки зависит от секции
+        g.pct = g.clients * 10
     days = []
     for day in range(7):
         items = [g for g in groups if g.weekday == day]
-        days.append({'name': WEEKDAYS[day], 'short': WEEKDAYS[day][:2], 'groups': items})
+        days.append({'name': WEEKDAYS[day], 'short': WEEKDAYS_SHORT[day], 'groups': items,
+                     'date': monday + timedelta(days=day), 'today': day == today.weekday()})
     return days
+
+
+CHECKIN_BEFORE = timedelta(minutes=15)
+
+
+def local_now():
+    return timezone.localtime()
+
+
+def checkin_open(group, now=None):
+    """Можно ли клиенту отметиться на занятии: в день занятия, за 15 минут до начала и до его конца."""
+    now = now or local_now()
+    if now.weekday() != group.weekday:
+        return False
+    start = datetime.combine(now.date(), group.start_time, tzinfo=now.tzinfo)
+    end = datetime.combine(now.date(), group.end_time, tzinfo=now.tzinfo)
+    return start - CHECKIN_BEFORE <= now <= end
+
+
+def client_stats(client, today=None):
+    """Показатели для карточки клиента: последнее посещение, посещения за 30 дней, посещаемость, сумма за месяц."""
+    today = today or date.today()
+    visits = Visit.objects.filter(enrollment__client=client)
+    last = visits.filter(attended=True).order_by('-date').first()
+    recent = visits.filter(date__gte=today - timedelta(days=90))
+    total = recent.count()
+    rate = round(recent.filter(attended=True).count() * 100 / total) if total else None
+    _, month_total = client_cost(client, today.replace(day=1), today)
+    return {'last_visit': last.date if last else None,
+            'visits_30': visits.filter(attended=True, date__gte=today - timedelta(days=30)).count(),
+            'rate': rate, 'month_total': month_total}
+
+
+def attendance_by_day(days=14, today=None):
+    """Сколько клиентов пришло по дням за последние N дней (для диаграммы на главной)."""
+    today = today or date.today()
+    start = today - timedelta(days=days - 1)
+    counts = dict(Visit.objects.filter(attended=True, date__gte=start, date__lte=today)
+                  .values_list('date').annotate(n=Count('id')))
+    rows = [(start + timedelta(days=i), counts.get(start + timedelta(days=i), 0)) for i in range(days)]
+    top = max([n for _, n in rows] + [1])
+    return [{'date': d, 'n': n, 'pct': round(n * 100 / top)} for d, n in rows]
+
+
+def expiring_subscriptions(days=14, today=None):
+    """Абонементы, которые закончатся в ближайшие N дней."""
+    today = today or date.today()
+    return (Subscription.objects.filter(end_date__gte=today, end_date__lte=today + timedelta(days=days))
+            .select_related('client').order_by('end_date'))

@@ -106,3 +106,16 @@ class TimetableTests(BaseTestCase):
     def test_group_color_depends_on_section(self):
         days = services.week_timetable()
         self.assertEqual(days[0]['groups'][0].color, self.swim.pk % 6)
+
+
+class CheckinWindowTests(BaseTestCase):
+    def test_window_boundaries(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo('Europe/Moscow')
+        g = self.group   # понедельник 09:00-10:00
+        self.assertFalse(services.checkin_open(g, datetime(2026, 10, 26, 8, 44, tzinfo=tz)))
+        self.assertTrue(services.checkin_open(g, datetime(2026, 10, 26, 8, 45, tzinfo=tz)))
+        self.assertTrue(services.checkin_open(g, datetime(2026, 10, 26, 10, 0, tzinfo=tz)))
+        self.assertFalse(services.checkin_open(g, datetime(2026, 10, 26, 10, 1, tzinfo=tz)))
+        self.assertFalse(services.checkin_open(g, datetime(2026, 10, 27, 9, 30, tzinfo=tz)))

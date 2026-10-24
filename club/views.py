@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from functools import wraps
 
 from django.contrib import messages
@@ -11,6 +11,7 @@ from django.db.models import ProtectedError, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -31,6 +32,7 @@ def access(check):
 
 
 operator_required = access(roles.is_operator)
+client_required = access(roles.is_client)
 admin_required = access(roles.is_admin)
 
 
@@ -87,41 +89,82 @@ def _enroll(request, client, group, status):
 
 
 # ---------- Главная ----------
-@operator_required
+@login_required
 def home(request):
+    if roles.is_client(request.user):
+        return redirect('club:me')
+    if not roles.is_operator(request.user):
+        raise PermissionDenied
     today = date.today()
-    stats = [
-        ('Клиентов', Client.objects.count()),
-        ('Занимаются сейчас', Enrollment.objects.filter(status=Enrollment.Status.ACTIVE).count()),
-        ('Групп', Group.objects.count()),
-        ('Действующих абонементов', Subscription.objects.filter(start_date__lte=today, end_date__gte=today).count()),
-    ]
     groups = list(services.groups_with_client_counts())
     todays = sorted((g for g in groups if g.weekday == today.weekday()), key=lambda g: g.start_time)
-    fill = [{'name': str(g.section), 'hall': str(g.hall), 'when': f'{WEEKDAYS[g.weekday][:2]} {g.start_time:%H:%M}',
-             'n': g.clients, 'pct': g.clients * 10} for g in groups]
+    month_start = today.replace(day=1)
+    visits_30 = Visit.objects.filter(date__gte=today - timedelta(days=30))
+    total_30 = visits_30.count()
+    stats = [
+        ('users', 'Клиентов', Client.objects.count(), f'+{Client.objects.filter(joined__gte=month_start).count()} за месяц'),
+        ('activity', 'Занимаются', Enrollment.objects.filter(status=Enrollment.Status.ACTIVE).values('client').distinct().count(),
+         f'{Enrollment.objects.filter(status=Enrollment.Status.BOOKED).count()} ждут подтверждения'),
+        ('calendar-check', 'Посещаемость', f'{round(visits_30.filter(attended=True).count() * 100 / total_30) if total_30 else 0}%',
+         'за 30 дней'),
+        ('ticket', 'Абонементы', Subscription.objects.filter(start_date__lte=today, end_date__gte=today).count(), 'действуют сейчас'),
+    ]
+    fill = [{'name': str(g.section), 'hall': str(g.hall), 'when': f'{g.weekday_short} {g.start_time:%H:%M}',
+             'n': g.clients, 'pct': g.clients * 10, 'color': g.section_id % 6} for g in groups]
     by_gender = services.clients_by_section_and_gender()
     for row in by_gender:
         total = row['men'] + row['women']
         row['men_pct'] = round(row['men'] * 100 / total) if total else 0
         row['women_pct'] = 100 - row['men_pct'] if total else 0
-    return render(request, 'club/home.html', {'stats': stats, 'fill': fill, 'by_gender': by_gender,
-                                              'todays': todays, 'today': today, 'weekday': WEEKDAYS[today.weekday()]})
+    return render(request, 'club/home.html', {
+        'stats': stats, 'fill': fill, 'by_gender': by_gender, 'todays': todays, 'today': today,
+        'weekday': WEEKDAYS[today.weekday()], 'chart': services.attendance_by_day(),
+        'expiring': services.expiring_subscriptions(), 'recent': Client.objects.order_by('-joined', '-pk')[:5]})
 
 
 # ---------- Клиенты ----------
 @operator_required
 def clients(request):
     q = request.GET.get('q', '').strip()
+    show = request.GET.get('show', 'all')
+    today = date.today()
     qs = Client.objects.all()
     if q:
-        qs = qs.filter(Q(last_name__icontains=q) | Q(first_name__icontains=q) | Q(phone__icontains=q))
+        qs = qs.filter(Q(last_name__icontains=q) | Q(first_name__icontains=q) | Q(patronymic__icontains=q)
+                       | Q(phone__icontains=q) | Q(email__icontains=q))
+    active = Q(enrollments__status=Enrollment.Status.ACTIVE)
+    if show == 'active':
+        qs = qs.filter(active).distinct()
+    elif show == 'idle':
+        qs = qs.exclude(active)
+    elif show == 'sub':
+        qs = qs.filter(subscriptions__start_date__lte=today, subscriptions__end_date__gte=today).distinct()
+    if request.GET.get('export') == 'csv':
+        return _clients_csv(qs)
     page = Paginator(qs, 15).get_page(request.GET.get('page'))
-    today = date.today()
     for c in page:
-        c.groups_count = c.enrollments.filter(status=Enrollment.Status.ACTIVE).count()
+        c.sections = sorted({e.group.section.name for e in c.enrollments.filter(status=Enrollment.Status.ACTIVE)
+                             .select_related('group__section')})
         c.discount = services.discount_on(c, today)
-    return render(request, 'club/clients.html', {'page': page, 'q': q, 'form': forms.ClientForm()})
+        last = Visit.objects.filter(enrollment__client=c, attended=True).order_by('-date').first()
+        c.last_visit = last.date if last else None
+    filters = [('all', 'Все'), ('active', 'Занимаются'), ('idle', 'Без занятий'), ('sub', 'С абонементом')]
+    return render(request, 'club/clients.html', {'page': page, 'q': q, 'show': show, 'filters': filters,
+                                                 'total': qs.count(), 'form': forms.ClientForm()})
+
+
+def _clients_csv(qs):
+    import csv
+    from django.http import HttpResponse
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="clients.csv"'
+    response.write('\ufeff')
+    w = csv.writer(response, delimiter=';')
+    w.writerow(['Фамилия', 'Имя', 'Отчество', 'Пол', 'Дата рождения', 'Телефон', 'E-mail', 'Клиент с'])
+    for c in qs:
+        w.writerow([c.last_name, c.first_name, c.patronymic, c.get_gender_display(), f'{c.birth_date:%d.%m.%Y}',
+                    c.phone, c.email, f'{c.joined:%d.%m.%Y}'])
+    return response
 
 
 @operator_required
@@ -141,13 +184,17 @@ def client_detail(request, pk):
         e.today_visit = todays.get(e.pk)
     enrolled_ids = [e.group_id for e in enrollments]
     free_groups = [g for g in services.groups_with_client_counts() if g.pk not in enrolled_ids]
+    for g in free_groups:
+        g.free = 10 - g.clients
     cost_form = forms.CostForm(request.GET or None)
     d1 = d2 = None
     if cost_form.is_valid():
         d1, d2 = cost_form.cleaned_data['date_from'], cost_form.cleaned_data['date_to']
     cost_rows, total = services.client_cost(client, d1, d2)
+    history = (Visit.objects.filter(enrollment__client=client).select_related('enrollment__group__section')
+               .order_by('-date')[:12])
     return render(request, 'club/client.html', {
-        'c': client, 'enrollments': enrollments, 'free_groups': free_groups, 'today': today,
+        'c': client, 'stats': services.client_stats(client, today), 'history': history, 'enrollments': enrollments, 'free_groups': free_groups, 'today': today,
         'subscriptions': client.subscriptions.all(), 'discount': services.discount_on(client, today),
         'sub_form': forms.SubscriptionForm(initial={'discount_percent': 5, 'start_date': today}),
         'form': forms.ClientForm(instance=client), 'cost_form': cost_form, 'cost_rows': cost_rows,
@@ -239,7 +286,7 @@ def visit_mark(request, pk):
     except ValueError:
         day = date.today()
     attended = request.POST.get('attended') == '1'
-    Visit.objects.update_or_create(enrollment=e, date=day, defaults={'attended': attended})
+    Visit.objects.update_or_create(enrollment=e, date=day, defaults={'attended': attended, 'self_marked': False})
     messages.success(request, f'{e.client}: {"был(а)" if attended else "пропуск"}, {day:%d.%m.%Y}.')
     return _next(request, 'club:client', e.client_id)
 
@@ -255,7 +302,9 @@ def visit_clear(request, pk):
 # ---------- Группы и расписание ----------
 @operator_required
 def timetable(request):
-    return render(request, 'club/timetable.html', {'days': services.week_timetable(), 'form': forms.GroupForm()})
+    sections = [(s, s.pk % 6) for s in Section.objects.all()]
+    return render(request, 'club/timetable.html', {'days': services.week_timetable(), 'form': forms.GroupForm(),
+                                                   'sections': sections})
 
 
 @operator_required
@@ -273,6 +322,8 @@ def group_detail(request, pk):
     free_clients = Client.objects.exclude(pk__in=taken)
     return render(request, 'club/group.html', {
         'g': group, 'enrollments': enrollments, 'day': day, 'free_clients': free_clients,
+        'prev': day - timedelta(days=7), 'next': day + timedelta(days=7), 'is_class_day': day.weekday() == group.weekday,
+        'present': sum(1 for e in enrollments if e.visit and e.visit.attended),
         'form': forms.GroupForm(instance=group), 'places': 10 - group.clients,
         'statuses': Enrollment.Status.choices})
 
@@ -322,7 +373,7 @@ def group_attendance(request, pk):
     present = set(request.POST.getlist('present'))
     saved = 0
     for e in group.enrollments.filter(status=Enrollment.Status.ACTIVE):
-        Visit.objects.update_or_create(enrollment=e, date=day, defaults={'attended': str(e.pk) in present})
+        Visit.objects.update_or_create(enrollment=e, date=day, defaults={'attended': str(e.pk) in present, 'self_marked': False})
         saved += 1
     messages.success(request, f'Посещаемость за {day:%d.%m.%Y} сохранена ({saved} чел.).')
     return redirect(f"{reverse('club:group', args=[pk])}?date={day:%Y-%m-%d}")
@@ -409,3 +460,69 @@ def user_add(request):
     else:
         _form_errors(request, form)
     return redirect(f"{reverse('club:catalog')}?tab=users")
+
+
+# ---------- Доступ клиента и личный кабинет ----------
+@operator_required
+@require_POST
+def client_access_add(request, pk):
+    client = get_object_or_404(Client, pk=pk)
+    if client.user_id:
+        messages.error(request, 'У клиента уже есть доступ.')
+    else:
+        form = forms.ClientAccessForm(request.POST)
+        if form.is_valid():
+            form.save(client)
+            messages.success(request, f'Доступ создан, логин: {form.cleaned_data["username"]}.')
+        else:
+            _form_errors(request, form)
+    return redirect('club:client', pk)
+
+
+@operator_required
+@require_POST
+def client_access_delete(request, pk):
+    client = get_object_or_404(Client, pk=pk)
+    if client.user_id:
+        client.user.delete()
+        messages.success(request, 'Доступ отключён.')
+    return redirect('club:client', pk)
+
+
+@client_required
+def me(request):
+    client = request.user.client_profile
+    today = timezone.localdate()
+    enrollments = list(client.enrollments.exclude(status=Enrollment.Status.CANCELLED)
+                       .select_related('group__section', 'group__trainer', 'group__hall'))
+    todays = {v.enrollment_id: v for v in Visit.objects.filter(enrollment__client=client, date=today)}
+    for e in enrollments:
+        e.today_visit = todays.get(e.pk)
+        e.can_checkin = (e.status == Enrollment.Status.ACTIVE and services.checkin_open(e.group)
+                         and not (e.today_visit and not e.today_visit.self_marked))
+    history = (Visit.objects.filter(enrollment__client=client).select_related('enrollment__group__section')
+               .order_by('-date')[:15])
+    stats = services.client_stats(client, today)
+    now_class = next((e for e in enrollments if e.status == Enrollment.Status.ACTIVE and services.checkin_open(e.group)), None)
+    return render(request, 'club/me.html', {
+        'c': client, 'enrollments': enrollments, 'history': history, 'today': today, 'now_class': now_class,
+        'discount': services.discount_on(client, today), 'visits_30': stats['visits_30'], 'month_total': stats['month_total']})
+
+
+@client_required
+@require_POST
+def me_checkin(request, pk):
+    """Клиент отмечает, что он на занятии: только своя активная запись и только в окне занятия."""
+    e = get_object_or_404(Enrollment, pk=pk, client=request.user.client_profile)
+    today = timezone.localdate()
+    visit = Visit.objects.filter(enrollment=e, date=today).first()
+    if e.status != Enrollment.Status.ACTIVE:
+        messages.error(request, 'Запись не подтверждена, отметиться нельзя.')
+    elif not services.checkin_open(e.group):
+        messages.error(request, 'Отметиться можно только во время занятия (за 15 минут до начала).')
+    elif visit and not visit.self_marked:
+        messages.error(request, 'Посещение уже отметил оператор.')
+    else:
+        Visit.objects.update_or_create(enrollment=e, date=today, defaults={'attended': True, 'self_marked': True})
+        messages.success(request, 'Отметка принята. Хорошей тренировки!')
+    return redirect('club:me')

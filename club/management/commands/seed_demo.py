@@ -5,7 +5,7 @@ from django.contrib.auth.models import Group as AuthGroup
 from django.core.management.base import BaseCommand, CommandError
 
 from club.models import Client, Enrollment, Group, Hall, Section, Subscription, Trainer, Visit
-from club.roles import ADMIN_GROUP, OPERATOR_GROUP
+from club.roles import ADMIN_GROUP, CLIENT_GROUP, OPERATOR_GROUP
 
 User = get_user_model()
 
@@ -25,10 +25,10 @@ class Command(BaseCommand):
             su.is_staff = su.is_superuser = True
             su.set_password(options['password']); su.save()
             self.stdout.write(f'Суперпользователь {su.username} создан/обновлён.')
-        admin, _ = User.objects.get_or_create(username='admin_club', defaults={'first_name': 'Администратор'})
+        admin, _ = User.objects.get_or_create(username='admin_club', defaults={'first_name': 'Мария'})
         admin.set_password('admin12345'); admin.save()
         admin.groups.add(AuthGroup.objects.get_or_create(name=ADMIN_GROUP)[0])
-        op, _ = User.objects.get_or_create(username='operator', defaults={'first_name': 'Оператор'})
+        op, _ = User.objects.get_or_create(username='operator', defaults={'first_name': 'Ольга'})
         op.set_password('operator12345'); op.save()
         op.groups.add(AuthGroup.objects.get_or_create(name=OPERATOR_GROUP)[0])
         if Client.objects.exists():
@@ -58,6 +58,10 @@ class Command(BaseCommand):
                   ('Морозова', 'Ольга', 'Павловна', 'F', date(1993, 4, 21), '+7 900 111-22-08')]
         clients = [Client.objects.create(last_name=a, first_name=b, patronymic=c, gender=d, birth_date=e, phone=f)
                    for a, b, c, d, e, f in people]
+        cu, _ = User.objects.get_or_create(username='client', defaults={'first_name': clients[0].first_name})
+        cu.set_password('client12345'); cu.save()
+        cu.groups.add(AuthGroup.objects.get_or_create(name=CLIENT_GROUP)[0])
+        clients[0].user = cu; clients[0].save(update_fields=['user'])
         plan = {0: [0, 1, 2], 1: [0, 3], 2: [1, 5], 3: [2, 4, 6], 4: [3, 7], 5: [4, 6, 7, 5]}
         enrolls = []
         for gi, cis in plan.items():
@@ -72,4 +76,4 @@ class Command(BaseCommand):
             for k in (14, 7):
                 Visit.objects.create(enrollment=e, date=date.today() - timedelta(days=k), attended=(i + k) % 4 != 0)
         self.stdout.write(self.style.SUCCESS(
-            'Готово: admin_club/admin12345 (администратор), operator/operator12345 (оператор)'))
+            'Готово: admin_club/admin12345 (администратор), operator/operator12345 (оператор), client/client12345 (клиент)'))
