@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Справочники{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Справочники</h1><p class="sub">Секции, тренеры, залы и пользователи. Группы занятий создаются в разделе «Расписание».</p></div></div>
+<div class="tabs">{% for k, t in tabs %}<a href="?tab={{ k }}" class="{% if tab == k %}active{% endif %}">{{ t }}</a>{% endfor %}
+  <a href="?tab=users" class="{% if tab == 'users' %}active{% endif %}">Пользователи</a></div>
+{% if tab == 'users' %}
+<div class="cols3"><div class="card"><h2>Пользователи<span class="n">{{ users|length }}</span></h2><table><thead><tr><th>Логин</th><th>Имя</th><th>Роль</th></tr></thead><tbody>
+  {% for u in users %}<tr><td><b>{{ u.username }}</b></td><td>{{ u.get_full_name|default:"—" }}</td>
+  <td>{% if u.is_superuser %}<span class="badge ok">Администратор</span>{% else %}{% for g in u.groups.all %}<span class="badge">{{ g.name }}</span>{% empty %}—{% endfor %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  <div class="card"><h2>Новый оператор</h2><form method="post" action="{% url 'club:user_add' %}">{% csrf_token %}
+    <div class="fields">{% for f in form %}<p class="full"><label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}</p>{% endfor %}</div>
+    <div style="margin-top:14px"><button class="btn">Создать оператора</button></div></form></div></div>
+{% else %}
+<div class="card"><div class="toolbar" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">{{ title }}<span class="n">{{ items|length }}</span></h2>
+  <button class="btn" data-open="add-dialog">＋ Добавить</button></div>
+  <table><tbody>{% for o, f in items %}<tr><td><b>{{ o }}</b>{% if tab == 'halls' and o.name %} · {{ o.name }}{% endif %}{% if tab == 'trainers' and o.phone %}<span class="empty"> · {{ o.phone }}</span>{% endif %}</td>
+    <td class="right"><button class="btn sm ghost" data-open="e{{ o.pk }}">Изменить</button>
+    <form method="post" action="{% url 'club:catalog_delete' tab o.pk %}" class="inline" data-confirm="Удалить «{{ o }}»?">{% csrf_token %}<button class="btn sm danger">Удалить</button></form></td></tr>
+  {% empty %}<tr><td class="empty">Пока пусто.</td></tr>{% endfor %}</tbody></table></div>
+<dialog id="add-dialog"><form method="post" action="{% url 'club:catalog_add' tab %}">{% csrf_token %}<h2>{{ title }}: добавить</h2>{% include 'club/_fields.html' %}
+  <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Добавить</button></div></form></dialog>
+{% for o, f in items %}<dialog id="e{{ o.pk }}"><form method="post" action="{% url 'club:catalog_edit' tab o.pk %}">{% csrf_token %}<h2>Изменить</h2>{% include 'club/_fields.html' with form=f %}
+  <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Сохранить</button></div></form></dialog>{% endfor %}
+{% endif %}
+{% endblock %}

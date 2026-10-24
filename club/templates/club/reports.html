@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Отчёты{% endblock %}
+{% block content %}
+<div class="head noprint"><div><h1>Отчёты</h1><p class="sub">Запросы по занятиям и документ для печати</p></div></div>
+<div class="tabs">
+  <a href="?tab=groups" class="{% if tab == 'groups' %}active{% endif %}">Группы и число клиентов</a>
+  <a href="?tab=gender" class="{% if tab == 'gender' %}active{% endif %}">Мужчины и женщины по секциям</a>
+  <a href="?tab=hall" class="{% if tab == 'hall' %}active{% endif %}">Расписание зала (печать)</a></div>
+{% if tab == 'groups' %}
+<div class="card"><h2>Группы и число клиентов на {{ today|date:"d.m.Y" }}</h2><div class="tablewrap"><table>
+  <thead><tr><th>Группа</th><th>Когда</th><th>Тренер</th><th>Зал</th><th>Клиентов</th></tr></thead><tbody>
+  {% for g in groups %}<tr><td><a href="{% url 'club:group' g.pk %}"><b>{{ g.section }}</b></a></td>
+    <td>{{ g.get_weekday_display }}, {{ g.start_time|time:"H:i" }}</td><td>{{ g.trainer }}</td><td>{{ g.hall }}</td>
+    <td><span class="badge {% if g.clients >= 10 %}wait{% else %}ok{% endif %}">{{ g.clients }} / 10</span></td></tr>
+  {% empty %}<tr><td colspan="5" class="empty">Групп нет.</td></tr>{% endfor %}</tbody></table></div></div>
+{% elif tab == 'gender' %}
+<div class="card"><h2>Клиенты по видам занятий</h2><div class="tablewrap"><table>
+  <thead><tr><th>Вид занятий</th><th>Клиентов-мужчин</th><th>Клиентов-женщин</th></tr></thead><tbody>
+  {% for r in rows %}<tr><td><b>{{ r.section }}</b></td><td>{{ r.men }}</td><td>{{ r.women }}</td></tr>
+  {% empty %}<tr><td colspan="3" class="empty">Секций нет.</td></tr>{% endfor %}</tbody></table></div></div>
+{% else %}
+<div class="card noprint"><form method="get" class="row"><input type="hidden" name="tab" value="hall">
+  <div><label>Зал</label><select name="hall" onchange="this.form.submit()">{% for h in halls %}<option value="{{ h.pk }}"{% if h == hall %} selected{% endif %}>{{ h }}{% if h.name %} · {{ h.name }}{% endif %}</option>{% endfor %}</select></div>
+  <button type="button" class="btn" onclick="window.print()">🖨 Печать</button></form></div>
+{% if hall %}<div class="card">
+  <div class="sheet-head"><h2 style="margin:0">Зал №{{ hall.number }}</h2><span>Дата распечатки: {{ today|date:"d.m.Y" }}</span></div>
+  {% for day, items in schedule %}
+    <div class="sheet-day">{{ day }}</div>
+    {% for start, end, g in items %}<div class="sheet-row">{{ start|time:"H:i" }} – {{ end|time:"H:i" }} – {{ g.section }}, {{ g.trainer }}</div>{% endfor %}
+  {% empty %}<p>В этом зале занятий нет.</p>{% endfor %}
+</div>{% else %}<p class="empty">Залов пока нет.</p>{% endif %}
+{% endif %}
+{% endblock %}

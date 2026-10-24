@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}{{ c }}{% endblock %}
+{% block content %}
+<div class="crumb"><a href="{% url 'club:clients' %}">← Клиенты</a></div>
+<div class="head"><div><h1>{{ c }}</h1>
+  <p class="sub">{{ c.get_gender_display }}, {{ c.birth_date|date:"d.m.Y" }} · {{ c.phone }}{% if discount %} · <span class="badge ok">скидка −{{ discount }}%</span>{% endif %}</p></div>
+  <div class="toolbar"><button class="btn ghost" data-open="edit-client">Изменить данные</button>
+    <form method="post" action="{% url 'club:client_delete' c.pk %}" class="inline" data-confirm="Удалить клиента вместе с записями, посещениями и абонементами?">{% csrf_token %}<button class="btn danger">Удалить</button></form></div></div>
+
+<div class="card"><h2>Занятия<span class="n">{{ enrollments|length }}</span></h2>
+  <div class="tablewrap"><table><thead><tr><th>Группа</th><th>Когда</th><th>Статус</th><th>Посещение сегодня</th><th></th></tr></thead><tbody>
+  {% for e in enrollments %}<tr>
+    <td><a href="{% url 'club:group' e.group_id %}"><b>{{ e.group.section }}</b></a><div class="empty" style="padding:0">{{ e.group.trainer }} · {{ e.group.hall }}</div></td>
+    <td>{{ e.group.get_weekday_display }}, {{ e.group.start_time|time:"H:i" }}–{{ e.group.end_time|time:"H:i" }}</td>
+    <td><span class="badge {% if e.status == 'active' %}ok{% elif e.status == 'booked' %}wait{% else %}off{% endif %}">{{ e.get_status_display }}</span></td>
+    <td>{% if e.status == 'active' %}
+      <form method="post" action="{% url 'club:visit_mark' e.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="date" value="{{ today|date:'Y-m-d' }}">
+        <button class="btn sm {% if e.today_visit and e.today_visit.attended %}good{% else %}ghost{% endif %}" name="attended" value="1">{% if e.today_visit and e.today_visit.attended %}✓ {% endif %}Был</button>
+        <button class="btn sm {% if e.today_visit and not e.today_visit.attended %}bad{% else %}ghost{% endif %}" name="attended" value="0">{% if e.today_visit and not e.today_visit.attended %}✕ {% endif %}Пропуск</button></form>
+      {% else %}<span class="empty">—</span>{% endif %}</td>
+    <td class="right">
+      <form method="post" action="{% url 'club:enrollment_status' e.pk %}" class="inline">{% csrf_token %}
+        {% if e.status == 'booked' %}<button class="btn sm good" name="status" value="active">Подтвердить</button>{% endif %}
+        {% if e.status != 'cancelled' %}<button class="btn sm ghost" name="status" value="cancelled">Отменить</button>{% else %}<button class="btn sm ghost" name="status" value="active">Вернуть</button>{% endif %}</form>
+      <form method="post" action="{% url 'club:enrollment_delete' e.pk %}" class="inline" data-confirm="Удалить запись вместе с посещениями?">{% csrf_token %}<button class="btn sm danger">✕</button></form></td></tr>
+  {% empty %}<tr><td colspan="5" class="empty">Клиент пока никуда не записан.</td></tr>{% endfor %}</tbody></table></div>
+  <form method="post" action="{% url 'club:client_enroll' c.pk %}" class="row" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">{% csrf_token %}
+    <div style="flex:1;min-width:260px"><label>Записать в группу</label><select name="group" required>
+      <option value="">Выберите группу…</option>
+      {% for g in free_groups %}<option value="{{ g.pk }}"{% if g.clients >= 10 %} disabled{% endif %}>{{ g.section }} · {{ g.get_weekday_display|slice:":2" }} {{ g.start_time|time:"H:i" }} · {{ g.trainer }} ({{ g.clients }}/10{% if g.clients >= 10 %}, мест нет{% endif %})</option>{% endfor %}</select></div>
+    <div><label>Статус</label><select name="status">{% for v, l in statuses %}{% if v != 'cancelled' %}<option value="{{ v }}"{% if v == 'active' %} selected{% endif %}>{{ l }}</option>{% endif %}{% endfor %}</select></div>
+    <button class="btn">Записать</button></form>
+</div>
+
+<div class="cols">
+  <div class="card"><h2>Абонементы<span class="n">{{ subscriptions|length }}</span></h2>
+    {% for s in subscriptions %}<div class="att"><div class="nm">−{{ s.discount_percent }}%<div style="font-weight:400;color:var(--mute);font-size:14px">{{ s.start_date|date:"d.m.Y" }} – {{ s.end_date|date:"d.m.Y" }}</div></div>
+      {% if s.start_date <= today and s.end_date >= today %}<span class="badge ok">действует</span>{% else %}<span class="badge">не действует</span>{% endif %}
+      <form method="post" action="{% url 'club:subscription_delete' s.pk %}" class="inline" data-confirm="Удалить абонемент?">{% csrf_token %}<button class="btn sm danger">✕</button></form></div>
+    {% empty %}<p class="empty">Абонементов нет.</p>{% endfor %}
+    <form method="post" action="{% url 'club:subscription_add' c.pk %}" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">{% csrf_token %}
+      <label>Оформить абонемент</label>
+      <div class="row"><div style="min-width:90px;width:90px"><input type="number" name="discount_percent" min="3" max="10" value="5" title="Скидка 3–10 %"></div>
+        <div><input type="date" name="start_date" value="{{ today|date:'Y-m-d' }}"></div><div><input type="date" name="end_date" required></div>
+        <button class="btn">Оформить</button></div><span class="helptext">Скидка 3–10 %, затем даты начала и окончания</span></form></div>
+  <div class="card"><h2>Стоимость занятий</h2>
+    <form method="get" class="row">
+      <div>{{ cost_form.date_from.label_tag }}{{ cost_form.date_from }}</div><div>{{ cost_form.date_to.label_tag }}{{ cost_form.date_to }}</div><button class="btn ghost">Посчитать</button></form>
+    <div style="margin-top:12px"><table><tbody>
+    {% for v, cost in cost_rows %}<tr><td>{{ v.date|date:"d.m.Y" }}</td><td>{{ v.enrollment.group.section }}</td>
+      <td>{% if v.attended %}<span class="badge ok">был</span>{% else %}<span class="badge off">пропуск</span>{% endif %}</td><td class="right">{{ cost }} ₽</td></tr>
+    {% empty %}<tr><td class="empty">Посещений за период нет.</td></tr>{% endfor %}
+    <tr><td colspan="3"><b>Итого к оплате</b></td><td class="right"><b>{{ total }} ₽</b></td></tr></tbody></table></div></div>
+</div>
+
+<dialog id="edit-client"><form method="post" action="{% url 'club:client_edit' c.pk %}">{% csrf_token %}
+  <h2>Данные клиента</h2>{% include 'club/_fields.html' %}
+  <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Сохранить</button></div></form></dialog>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}{{ g.section }}{% endblock %}
+{% block content %}
+<div class="crumb"><a href="{% url 'club:timetable' %}">← Расписание</a></div>
+<div class="head"><div><h1>{{ g.section }}</h1>
+  <p class="sub">{{ g.get_weekday_display }}, {{ g.start_time|time:"H:i" }}–{{ g.end_time|time:"H:i" }} · {{ g.trainer }} · {{ g.hall }} · {{ g.price }} ₽ за занятие</p></div>
+  {% if is_admin %}<div class="toolbar"><button class="btn ghost" data-open="edit-group">Изменить группу</button>
+    <form method="post" action="{% url 'club:group_delete' g.pk %}" class="inline" data-confirm="Удалить группу вместе с записями и посещениями?">{% csrf_token %}<button class="btn danger">Удалить</button></form></div>{% endif %}</div>
+
+<div class="card"><h2>Посещаемость<span class="n">{{ g.clients }} из 10 мест занято</span></h2>
+  <form method="get" class="row" style="margin-bottom:14px"><div><label>Дата занятия</label><input type="date" name="date" value="{{ day|date:'Y-m-d' }}"></div><button class="btn ghost">Показать</button></form>
+  <form method="post" action="{% url 'club:group_attendance' g.pk %}">{% csrf_token %}<input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+  {% for e in enrollments %}<label class="att" style="font-size:15px;font-weight:400;margin:0">
+    {% if e.status == 'active' %}<input type="checkbox" name="present" value="{{ e.pk }}"{% if not e.visit or e.visit.attended %} checked{% endif %}>{% else %}<input type="checkbox" disabled>{% endif %}
+    <span class="nm"><a href="{% url 'club:client' e.client_id %}">{{ e.client }}</a></span>
+    {% if e.status == 'booked' %}<span class="badge wait">предварительно</span>
+      <form method="post" action="{% url 'club:enrollment_status' e.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn sm good" name="status" value="active">Подтвердить</button></form>{% endif %}
+    {% if e.visit %}<span class="badge {% if e.visit.attended %}ok{% else %}off{% endif %}">{% if e.visit.attended %}был{% else %}пропуск{% endif %}</span>{% endif %}
+    </label>
+  {% empty %}<p class="empty">В группе пока никого нет.</p>{% endfor %}
+  {% if enrollments %}<div style="margin-top:14px"><button class="btn">Сохранить посещаемость за {{ day|date:"d.m.Y" }}</button>
+    <span class="helptext">Отмеченные присутствовали, у остальных подтверждённых клиентов будет пропуск</span></div>{% endif %}
+  </form>
+</div>
+
+<div class="card"><h2>Записать клиента</h2>
+  {% if places > 0 %}
+  <form method="post" action="{% url 'club:group_enroll' g.pk %}" class="row">{% csrf_token %}
+    <div style="flex:1;min-width:260px"><label>Клиент</label><select name="client" required><option value="">Выберите клиента…</option>
+      {% for c in free_clients %}<option value="{{ c.pk }}">{{ c }}</option>{% endfor %}</select></div>
+    <div><label>Статус</label><select name="status">{% for v, l in statuses %}{% if v != 'cancelled' %}<option value="{{ v }}"{% if v == 'active' %} selected{% endif %}>{{ l }}</option>{% endif %}{% endfor %}</select></div>
+    <button class="btn">Записать</button></form>
+  <p class="helptext">Свободно мест: {{ places }}. Нового клиента сначала нужно <a href="{% url 'club:clients' %}?new=1">добавить в список</a>.</p>
+  {% else %}<p class="empty">В группе уже 10 человек, мест нет.</p>{% endif %}
+</div>
+{% if is_admin %}<dialog id="edit-group"><form method="post" action="{% url 'club:group_edit' g.pk %}">{% csrf_token %}
+  <h2>Группа</h2>{% include 'club/_fields.html' %}
+  <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Сохранить</button></div></form></dialog>{% endif %}
+{% endblock %}

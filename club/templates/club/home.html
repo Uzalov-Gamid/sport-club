@@ -1,11 +1,21 @@
 {% extends 'base.html' %}
 {% block title %}Главная{% endblock %}
 {% block content %}
-<h1>Добро пожаловать, {{ user.get_full_name|default:user.username }}</h1>
-<p class="sub">Вы вошли с ролью «{{ role_name }}»</p>
-<div class="stats">{% for label, value, icon in stats %}
-  <div class="stat"><b>{{ value }}</b><span>{{ icon }} {{ label }}</span></div>{% endfor %}</div>
-<div class="grid2">
+<div class="head">
+  <div><h1>Добрый день, {{ user.first_name|default:user.username }}</h1><p class="sub">Сегодня {{ weekday|lower }}, {{ today|date:"d.m.Y" }}</p></div>
+  <div class="toolbar"><a class="btn" href="{% url 'club:clients' %}?new=1">＋ Новый клиент</a>
+    <a class="btn ghost" href="{% url 'club:timetable' %}">Расписание недели</a></div>
+</div>
+<div class="stats">{% for label, value in stats %}<div class="stat"><b>{{ value }}</b><span>{{ label }}</span></div>{% endfor %}</div>
+<div class="card"><h2>Занятия сегодня<span class="n">{{ todays|length }}</span></h2>
+  {% for g in todays %}
+  <div class="att"><b style="width:110px">{{ g.start_time|time:"H:i" }}–{{ g.end_time|time:"H:i" }}</b>
+    <div class="nm">{{ g.section }}<div style="font-weight:400;color:var(--mute);font-size:14px">{{ g.trainer }} · {{ g.hall }}</div></div>
+    <span class="badge {% if g.clients >= 10 %}wait{% else %}ok{% endif %}">{{ g.clients }}/10</span>
+    <a class="btn sm good" href="{% url 'club:group' g.pk %}">Отметить посещаемость</a></div>
+  {% empty %}<p class="empty">Сегодня занятий нет.</p>{% endfor %}
+</div>
+<div class="cols">
   <div class="card"><h2>Заполненность групп</h2>
     {% for f in fill %}<div class="bar"><span class="lbl" title="{{ f.name }}, {{ f.hall }}">{{ f.name }} · {{ f.when }}</span>
       <span class="track"><span class="fill{% if f.n >= 10 %} full{% endif %}" style="width:{{ f.pct }}%"></span></span><span class="num">{{ f.n }}/10</span></div>
@@ -16,26 +26,5 @@
       <span class="num">{{ r.men }}/{{ r.women }}</span></div>
     {% empty %}<p class="empty">Секций пока нет.</p>{% endfor %}
     <div class="legend"><span><i style="background:#3b82f6"></i>мужчины</span><span><i style="background:#ec4899"></i>женщины</span></div></div>
-</div>
-<h3>Данные</h3>
-<div class="tiles">
-  <a class="tile" href="{% url 'club:clients' %}"><i>👥</i>Клиенты</a>
-  <a class="tile" href="{% url 'club:enrollments' %}"><i>📝</i>Записи на занятия</a>
-  <a class="tile" href="{% url 'club:visits' %}"><i>✅</i>Посещения</a>
-  <a class="tile" href="{% url 'club:subscriptions' %}"><i>🎫</i>Абонементы</a>
-  {% if is_admin %}
-  <a class="tile" href="{% url 'club:groups' %}"><i>🗓</i>Группы занятий</a>
-  <a class="tile" href="{% url 'club:sections' %}"><i>🏊</i>Секции</a>
-  <a class="tile" href="{% url 'club:trainers' %}"><i>🧑‍🏫</i>Тренеры</a>
-  <a class="tile" href="{% url 'club:halls' %}"><i>🏟</i>Залы</a>
-  {% endif %}
-</div>
-<h3>Запросы и отчёты</h3>
-<div class="tiles">
-  <a class="tile" href="{% url 'club:timetable' %}"><i>📅</i>Расписание недели</a>
-  <a class="tile" href="{% url 'club:q_groups' %}"><i>📊</i>Группы и число клиентов</a>
-  <a class="tile" href="{% url 'club:q_gender' %}"><i>⚥</i>Клиенты по видам занятий</a>
-  <a class="tile" href="{% url 'club:report' %}"><i>🖨</i>Расписание зала</a>
-  {% if is_admin %}<a class="tile" href="{% url 'club:users' %}"><i>🔑</i>Пользователи</a>{% endif %}
 </div>
 {% endblock %}

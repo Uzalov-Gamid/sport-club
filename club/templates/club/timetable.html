@@ -1,18 +1,24 @@
 {% extends 'base.html' %}
-{% block title %}Расписание недели{% endblock %}
+{% block title %}Расписание{% endblock %}
 {% block content %}
-<h1>Расписание недели</h1><p class="sub">Группы по дням недели; в карточке — тренер, зал и заполненность</p>
+<div class="head"><div><h1>Расписание недели</h1><p class="sub">Нажмите на занятие, чтобы увидеть участников и отметить посещаемость</p></div>
+  {% if is_admin %}<button class="btn" data-open="new-group">＋ Новая группа</button>{% endif %}</div>
 <div class="week">
 {% for d in days %}
   <div class="day"><h4>{{ d.name }}</h4>
   {% for g in d.groups %}
-    <div class="slot c{{ g.color }}">
+    <a class="slot c{{ g.color }}" href="{% url 'club:group' g.pk %}">
       <b>{{ g.start_time|time:"H:i" }}–{{ g.end_time|time:"H:i" }}</b>
       {{ g.section }}<small>{{ g.trainer }} · {{ g.hall }}</small>
       <small>{{ g.clients }} / 10 чел.</small>
-    </div>
+    </a>
   {% empty %}<span class="empty">нет занятий</span>{% endfor %}
   </div>
 {% endfor %}
 </div>
+{% if is_admin %}
+<dialog id="new-group"><form method="post" action="{% url 'club:group_add' %}">{% csrf_token %}
+  <h2>Новая группа</h2>{% include 'club/_fields.html' %}
+  <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Создать</button></div></form></dialog>
+{% endif %}
 {% endblock %}

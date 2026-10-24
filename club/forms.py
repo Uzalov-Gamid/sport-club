@@ -55,7 +55,7 @@ class EnrollmentForm(forms.ModelForm):
 class SubscriptionForm(forms.ModelForm):
     class Meta:
         model = Subscription
-        fields = '__all__'
+        fields = ('discount_percent', 'start_date', 'end_date')
         widgets = {'start_date': DATE, 'end_date': DATE}
 
 
