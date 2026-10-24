@@ -1,0 +1,33 @@
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Мои занятия{% endblock %}
+{% block content %}
+<div class="head"><div><h1>Привет, {{ c.first_name }}</h1><p class="sub">{{ today|date:"l, j E"|capfirst }}</p></div></div>
+{% if now_class %}
+<div class="card" style="background:var(--ink);color:#fff">
+  <div class="profile"><div class="ava lg" style="background:var(--lime)">{% icon 'dumbbell' 26 %}</div>
+    <div class="grow"><small style="color:var(--side-ink);font-weight:700">Сейчас идёт</small><h1 style="color:#fff">{{ now_class.group.section }}</h1>
+      <div class="facts" style="color:var(--side-ink)"><span>{% icon 'clock' 15 %}{{ now_class.group.start_time|time:"H:i" }}–{{ now_class.group.end_time|time:"H:i" }}</span><span>{% icon 'map-pin' 15 %}{{ now_class.group.hall }}</span><span>{% icon 'user' 15 %}{{ now_class.group.trainer }}</span></div></div>
+    {% if now_class.today_visit and now_class.today_visit.attended %}<span class="tag lime" style="font-size:14px;padding:8px 14px">{% icon 'circle-check' 16 %}Вы отметились</span>
+    {% else %}<form method="post" action="{% url 'club:me_checkin' now_class.pk %}">{% csrf_token %}<button class="btn lime" style="padding:14px 22px;font-size:16px">{% icon 'user-check' 20 %}Я на занятии</button></form>{% endif %}</div></div>
+{% endif %}
+<div class="mini" style="margin:0 0 16px">
+  <div style="background:var(--card)"><b>{{ visits_30 }}</b><small>посещений за 30 дней</small></div>
+  <div style="background:var(--card)"><b>{% if discount %}−{{ discount }}%{% else %}—{% endif %}</b><small>скидка по абонементу</small></div>
+  <div style="background:var(--card)"><b>{{ month_total|floatformat:0 }} ₽</b><small>к оплате за месяц</small></div>
+  <div style="background:var(--card)"><b>{{ enrollments|length }}</b><small>групп</small></div></div>
+<div class="cols">
+  <div class="card"><div class="card-h"><h2>Мои занятия</h2></div><div class="list">
+    {% for e in enrollments %}<div class="it"><span class="rail t{{ e.group.section_id|tone }}"></span>
+      <div class="grow"><b>{{ e.group.section }}</b><div class="meta"><span>{% icon 'clock' 13 %}{{ e.group.get_weekday_display|lower }}, {{ e.group.start_time|time:"H:i" }}–{{ e.group.end_time|time:"H:i" }}</span><span>{% icon 'map-pin' 13 %}{{ e.group.hall }}</span></div></div>
+      {% if e.status == 'booked' %}<span class="tag wait">ждёт подтверждения</span>
+      {% elif e.today_visit and e.today_visit.attended %}<span class="tag ok">{% icon 'check' 13 %}сегодня был</span>
+      {% elif e.can_checkin %}<form method="post" action="{% url 'club:me_checkin' e.pk %}" class="inline">{% csrf_token %}<button class="btn sm lime">{% icon 'user-check' 15 %}Я на занятии</button></form>{% endif %}
+    </div>
+    {% empty %}<div class="empty">{% icon 'dumbbell' 28 %}Вы пока никуда не записаны. Обратитесь к администратору клуба</div>{% endfor %}</div>
+    <p class="helptext" style="margin-top:10px">Отметиться можно за 15 минут до начала и до конца занятия.</p></div>
+  <div class="card"><div class="card-h"><h2>История посещений</h2></div><div class="list">
+    {% for v in history %}<div class="it"><span class="time" style="width:86px">{{ v.date|date:"d.m.Y" }}</span><div class="grow">{{ v.enrollment.group.section }}</div>
+      <span class="tag {% if v.attended %}ok{% else %}off{% endif %}">{% if v.attended %}был{% else %}пропуск{% endif %}</span></div>
+    {% empty %}<div class="empty">Посещений пока нет</div>{% endfor %}</div></div>
+</div>
+{% endblock %}

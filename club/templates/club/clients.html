@@ -1,25 +1,28 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load ui %}
 {% block title %}Клиенты{% endblock %}
 {% block content %}
-<div class="head"><div><h1>Клиенты</h1><p class="sub">Откройте карточку клиента, чтобы записать его на занятия, отметить посещение или оформить абонемент</p></div>
-  <button class="btn" data-open="new-client">＋ Новый клиент</button></div>
+<div class="head"><div><h1>Клиенты</h1><p class="sub">{{ total }} {% if show == 'all' and not q %}в базе{% else %}найдено{% endif %}</p></div>
+  <div class="row"><a class="btn ghost" href="?export=csv&show={{ show }}&q={{ q|urlencode }}">{% icon 'download' %}CSV</a>
+    <button class="btn lime" data-open="new-client">{% icon 'user-plus' %}Новый клиент</button></div></div>
 <div class="card">
-  <form method="get" class="toolbar" style="margin-bottom:12px"><input class="search" type="search" name="q" value="{{ q }}" placeholder="Поиск по фамилии, имени или телефону">
-    <button class="btn ghost">Найти</button>{% if q %}<a class="btn ghost" href="{% url 'club:clients' %}">Сбросить</a>{% endif %}</form>
-  <div class="tablewrap"><table>
-    <thead><tr><th>Клиент</th><th>Телефон</th><th>Занимается</th><th>Скидка</th></tr></thead><tbody>
+  <form method="get" class="row" style="margin-bottom:14px"><input type="hidden" name="show" value="{{ show }}">
+    <div class="searchbox">{% icon 'search' %}<input type="search" name="q" value="{{ q }}" placeholder="Поиск: фамилия, имя, телефон или e-mail"></div></form>
+  <div class="chips" style="margin-bottom:12px">{% for k, t in filters %}<a href="?show={{ k }}&q={{ q|urlencode }}" class="{% if show == k %}on{% endif %}">{{ t }}</a>{% endfor %}</div>
+  <table class="rt"><thead><tr><th>Клиент</th><th>Телефон</th><th>Секции</th><th>Последний визит</th><th class="r">Скидка</th></tr></thead><tbody>
     {% for c in page %}<tr class="link" data-href="{% url 'club:client' c.pk %}">
-      <td><a href="{% url 'club:client' c.pk %}"><b>{{ c }}</b></a></td><td>{{ c.phone }}</td>
-      <td>{% if c.groups_count %}{{ c.groups_count }} гр.{% else %}<span class="empty">—</span>{% endif %}</td>
-      <td>{% if c.discount %}<span class="badge ok">−{{ c.discount }}%</span>{% else %}<span class="empty">—</span>{% endif %}</td></tr>
-    {% empty %}<tr><td colspan="4" class="empty">{% if q %}Никого не нашли.{% else %}Клиентов пока нет — добавьте первого.{% endif %}</td></tr>{% endfor %}
-    </tbody></table></div>
+      <td><a class="who" href="{% url 'club:client' c.pk %}"><span class="ava t{{ c.pk|tone }}">{{ c|initials }}</span><span><b>{{ c.last_name }} {{ c.first_name }}</b><small>{{ c.age }} лет · {{ c.get_gender_display|lower }}</small></span></a></td>
+      <td>{{ c.phone }}</td>
+      <td>{% for s in c.sections %}<span class="tag">{{ s }}</span> {% empty %}<span class="tag off">нет занятий</span>{% endfor %}</td>
+      <td class="hide-m">{% if c.last_visit %}{{ c.last_visit|date:"d.m.Y" }}{% else %}<span style="color:var(--faint)">—</span>{% endif %}</td>
+      <td class="r">{% if c.discount %}<span class="tag lime">−{{ c.discount }}%</span>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="5"><div class="empty">{% icon 'users' 28 %}{% if q or show != 'all' %}Никого не нашли{% else %}Клиентов пока нет. Добавьте первого{% endif %}</div></td></tr>{% endfor %}
+  </tbody></table>
   {% if page.has_other_pages %}<div class="pager">
-    {% if page.has_previous %}<a class="btn ghost sm" href="?page={{ page.previous_page_number }}&q={{ q }}">←</a>{% endif %}
-    <span>{{ page.number }} / {{ page.paginator.num_pages }}</span>
-    {% if page.has_next %}<a class="btn ghost sm" href="?page={{ page.next_page_number }}&q={{ q }}">→</a>{% endif %}</div>{% endif %}
+    {% if page.has_previous %}<a class="btn ghost sm icon" href="?page={{ page.previous_page_number }}&q={{ q|urlencode }}&show={{ show }}">{% icon 'chevron-left' %}</a>{% endif %}
+    <span>{{ page.number }} из {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn ghost sm icon" href="?page={{ page.next_page_number }}&q={{ q|urlencode }}&show={{ show }}">{% icon 'chevron-right' %}</a>{% endif %}</div>{% endif %}
 </div>
 <dialog id="new-client" data-auto><form method="post" action="{% url 'club:client_add' %}">{% csrf_token %}
-  <h2>Новый клиент</h2>{% include 'club/_fields.html' %}
-  <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Добавить</button></div></form></dialog>
+  <h3>Новый клиент<button type="button" class="btn sm soft icon" data-close>{% icon 'x' %}</button></h3>{% include 'club/_fields.html' %}
+  <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Добавить клиента</button></div></form></dialog>
 {% endblock %}

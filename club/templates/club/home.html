@@ -1,30 +1,43 @@
-{% extends 'base.html' %}
-{% block title %}Главная{% endblock %}
+{% extends 'base.html' %}{% load ui %}
+{% block title %}Обзор{% endblock %}
 {% block content %}
 <div class="head">
-  <div><h1>Добрый день, {{ user.first_name|default:user.username }}</h1><p class="sub">Сегодня {{ weekday|lower }}, {{ today|date:"d.m.Y" }}</p></div>
-  <div class="toolbar"><a class="btn" href="{% url 'club:clients' %}?new=1">＋ Новый клиент</a>
-    <a class="btn ghost" href="{% url 'club:timetable' %}">Расписание недели</a></div>
+  <div><h1>Добрый день, {{ user.first_name|default:user.username }}</h1><p class="sub">{{ weekday }}, {{ today|date:"j E" }}</p></div>
+  <div class="row"><a class="btn ghost" href="{% url 'club:timetable' %}">{% icon 'calendar-days' %}Расписание</a>
+    <a class="btn lime" href="{% url 'club:clients' %}?new=1">{% icon 'user-plus' %}Новый клиент</a></div>
 </div>
-<div class="stats">{% for label, value in stats %}<div class="stat"><b>{{ value }}</b><span>{{ label }}</span></div>{% endfor %}</div>
-<div class="card"><h2>Занятия сегодня<span class="n">{{ todays|length }}</span></h2>
-  {% for g in todays %}
-  <div class="att"><b style="width:110px">{{ g.start_time|time:"H:i" }}–{{ g.end_time|time:"H:i" }}</b>
-    <div class="nm">{{ g.section }}<div style="font-weight:400;color:var(--mute);font-size:14px">{{ g.trainer }} · {{ g.hall }}</div></div>
-    <span class="badge {% if g.clients >= 10 %}wait{% else %}ok{% endif %}">{{ g.clients }}/10</span>
-    <a class="btn sm good" href="{% url 'club:group' g.pk %}">Отметить посещаемость</a></div>
-  {% empty %}<p class="empty">Сегодня занятий нет.</p>{% endfor %}
+<div class="kpis">{% for ic, label, value, hint in stats %}
+  <div class="kpi"><div class="ic">{% icon ic 19 %}</div><b>{{ value }}</b><span>{{ label }}</span><small>{{ hint }}</small></div>{% endfor %}</div>
+<div class="cols3">
+  <div class="card"><div class="card-h"><h2>Занятия сегодня<span class="n">{{ todays|length }}</span></h2><a class="btn sm soft" href="{% url 'club:timetable' %}">Вся неделя {% icon 'chevron-right' 15 %}</a></div>
+    <div class="list">
+    {% for g in todays %}
+    <a class="it" href="{% url 'club:group' g.pk %}"><span class="rail t{{ g.section_id|tone }}"></span>
+      <div style="width:96px"><div class="time">{{ g.start_time|time:"H:i" }}</div><div class="meta">до {{ g.end_time|time:"H:i" }}</div></div>
+      <div class="grow"><b>{{ g.section }}</b><div class="meta"><span>{% icon 'user' 13 %}{{ g.trainer }}</span><span>{% icon 'map-pin' 13 %}{{ g.hall }}</span></div></div>
+      <span class="tag {% if g.clients >= 10 %}wait{% else %}dark{% endif %}">{% icon 'users' 13 %}{{ g.clients }}/10</span>
+      <span class="btn sm lime">{% icon 'user-check' 15 %}Отметить</span></a>
+    {% empty %}<div class="empty">{% icon 'calendar-days' 28 %}Сегодня занятий нет</div>{% endfor %}</div></div>
+  <div class="card"><div class="card-h"><h2>Посещения за 2 недели</h2></div>
+    <div class="bars">{% for d in chart %}<div class="{% if d.date == today %}today{% endif %}{% if d.n %} has{% endif %}" title="{{ d.date|date:'d.m' }}: {{ d.n }}"><i style="height:{{ d.pct }}%"></i><small>{{ d.date|date:"j" }}</small></div>{% endfor %}</div></div>
 </div>
-<div class="cols">
-  <div class="card"><h2>Заполненность групп</h2>
-    {% for f in fill %}<div class="bar"><span class="lbl" title="{{ f.name }}, {{ f.hall }}">{{ f.name }} · {{ f.when }}</span>
-      <span class="track"><span class="fill{% if f.n >= 10 %} full{% endif %}" style="width:{{ f.pct }}%"></span></span><span class="num">{{ f.n }}/10</span></div>
-    {% empty %}<p class="empty">Групп пока нет.</p>{% endfor %}</div>
-  <div class="card"><h2>Клиенты по секциям</h2>
-    {% for r in by_gender %}<div class="bar"><span class="lbl">{{ r.section }}</span>
-      <span class="track"><span class="seg-m" style="width:{{ r.men_pct }}%"></span><span class="seg-f" style="width:{{ r.women_pct }}%"></span></span>
-      <span class="num">{{ r.men }}/{{ r.women }}</span></div>
-    {% empty %}<p class="empty">Секций пока нет.</p>{% endfor %}
-    <div class="legend"><span><i style="background:#3b82f6"></i>мужчины</span><span><i style="background:#ec4899"></i>женщины</span></div></div>
+<div class="cols" style="margin-top:16px">
+  <div class="card"><div class="card-h"><h2>Заполненность групп</h2><span class="tag">лимит 10</span></div>
+    {% for f in fill %}<div class="hb"><span class="lbl" title="{{ f.name }}, {{ f.hall }}">{{ f.name }} · {{ f.when }}</span>
+      <span class="meter t{{ f.color }}"><i class="{% if f.n >= 10 %}full{% endif %}" style="width:{{ f.pct }}%"></i></span><span class="num">{{ f.n }}/10</span></div>
+    {% empty %}<div class="empty">Групп пока нет</div>{% endfor %}</div>
+  <div class="stack">
+    <div class="card"><div class="card-h"><h2>Клиенты по секциям</h2></div>
+      {% for r in by_gender %}<div class="hb"><span class="lbl">{{ r.section }}</span>
+        <span class="meter"><span class="seg-m" style="width:{{ r.men_pct }}%"></span><span class="seg-f" style="width:{{ r.women_pct }}%"></span></span>
+        <span class="num">{{ r.men }}/{{ r.women }}</span></div>
+      {% empty %}<div class="empty">Секций пока нет</div>{% endfor %}
+      <div class="legend"><span><i style="background:var(--ink)"></i>мужчины</span><span><i style="background:var(--lime)"></i>женщины</span></div></div>
+    <div class="card"><div class="card-h"><h2>Абонементы заканчиваются</h2></div><div class="list">
+      {% for s in expiring %}<a class="it" href="{% url 'club:client' s.client_id %}"><div class="ava sm t{{ s.client_id|tone }}">{{ s.client|initials }}</div>
+        <div class="grow"><b>{{ s.client.last_name }} {{ s.client.first_name }}</b><div class="meta">−{{ s.discount_percent }}%</div></div>
+        <span class="tag wait">{% icon 'clock' 13 %}до {{ s.end_date|date:"d.m" }}</span></a>
+      {% empty %}<div class="empty" style="padding:8px 0">В ближайшие 2 недели — нет</div>{% endfor %}</div></div>
+  </div>
 </div>
 {% endblock %}

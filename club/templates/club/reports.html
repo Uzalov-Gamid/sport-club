@@ -1,33 +1,34 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load ui %}
 {% block title %}Отчёты{% endblock %}
 {% block content %}
 <div class="head noprint"><div><h1>Отчёты</h1><p class="sub">Запросы по занятиям и документ для печати</p></div></div>
 <div class="tabs">
-  <a href="?tab=groups" class="{% if tab == 'groups' %}active{% endif %}">Группы и число клиентов</a>
-  <a href="?tab=gender" class="{% if tab == 'gender' %}active{% endif %}">Мужчины и женщины по секциям</a>
-  <a href="?tab=hall" class="{% if tab == 'hall' %}active{% endif %}">Расписание зала (печать)</a></div>
+  <a href="?tab=groups" class="{% if tab == 'groups' %}on{% endif %}">{% icon 'users' 16 %}Группы и клиенты</a>
+  <a href="?tab=gender" class="{% if tab == 'gender' %}on{% endif %}">{% icon 'chart-column' 16 %}Мужчины и женщины</a>
+  <a href="?tab=hall" class="{% if tab == 'hall' %}on{% endif %}">{% icon 'printer' 16 %}Расписание зала</a></div>
 {% if tab == 'groups' %}
-<div class="card"><h2>Группы и число клиентов на {{ today|date:"d.m.Y" }}</h2><div class="tablewrap"><table>
-  <thead><tr><th>Группа</th><th>Когда</th><th>Тренер</th><th>Зал</th><th>Клиентов</th></tr></thead><tbody>
-  {% for g in groups %}<tr><td><a href="{% url 'club:group' g.pk %}"><b>{{ g.section }}</b></a></td>
+<div class="card"><div class="card-h"><h2>Группы и число клиентов на {{ today|date:"d.m.Y" }}</h2></div><table class="rt">
+  <thead><tr><th>Группа</th><th>Когда</th><th>Тренер</th><th>Зал</th><th style="width:200px">Клиентов</th></tr></thead><tbody>
+  {% for g in groups %}<tr class="link" data-href="{% url 'club:group' g.pk %}"><td><b>{{ g.section }}</b></td>
     <td>{{ g.get_weekday_display }}, {{ g.start_time|time:"H:i" }}</td><td>{{ g.trainer }}</td><td>{{ g.hall }}</td>
-    <td><span class="badge {% if g.clients >= 10 %}wait{% else %}ok{% endif %}">{{ g.clients }} / 10</span></td></tr>
-  {% empty %}<tr><td colspan="5" class="empty">Групп нет.</td></tr>{% endfor %}</tbody></table></div></div>
+    <td><div style="display:flex;align-items:center;gap:10px"><span class="meter t{{ g.section_id|tone }}" style="flex:1"><i class="{% if g.clients >= 10 %}full{% endif %}" style="width:{% widthratio g.clients 10 100 %}%"></i></span><b style="width:44px;text-align:right">{{ g.clients }}/10</b></div></td></tr>
+  {% empty %}<tr><td colspan="5"><div class="empty">Групп нет</div></td></tr>{% endfor %}</tbody></table></div>
 {% elif tab == 'gender' %}
-<div class="card"><h2>Клиенты по видам занятий</h2><div class="tablewrap"><table>
-  <thead><tr><th>Вид занятий</th><th>Клиентов-мужчин</th><th>Клиентов-женщин</th></tr></thead><tbody>
-  {% for r in rows %}<tr><td><b>{{ r.section }}</b></td><td>{{ r.men }}</td><td>{{ r.women }}</td></tr>
-  {% empty %}<tr><td colspan="3" class="empty">Секций нет.</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="card"><div class="card-h"><h2>Текущие клиенты по видам занятий</h2></div><table>
+  <thead><tr><th>Вид занятий</th><th class="r">Мужчин</th><th class="r">Женщин</th><th class="r">Всего</th></tr></thead><tbody>
+  {% for r in rows %}<tr><td><b>{{ r.section }}</b></td><td class="r">{{ r.men }}</td><td class="r">{{ r.women }}</td><td class="r"><b>{{ r.men|add:r.women }}</b></td></tr>
+  {% empty %}<tr><td colspan="4"><div class="empty">Секций нет</div></td></tr>{% endfor %}</tbody></table>
+  <p class="helptext" style="margin-top:12px">Учитываются клиенты со статусом «Занимается». Клиент в нескольких группах одной секции считается один раз.</p></div>
 {% else %}
 <div class="card noprint"><form method="get" class="row"><input type="hidden" name="tab" value="hall">
-  <div><label>Зал</label><select name="hall" onchange="this.form.submit()">{% for h in halls %}<option value="{{ h.pk }}"{% if h == hall %} selected{% endif %}>{{ h }}{% if h.name %} · {{ h.name }}{% endif %}</option>{% endfor %}</select></div>
-  <button type="button" class="btn" onclick="window.print()">🖨 Печать</button></form></div>
-{% if hall %}<div class="card">
-  <div class="sheet-head"><h2 style="margin:0">Зал №{{ hall.number }}</h2><span>Дата распечатки: {{ today|date:"d.m.Y" }}</span></div>
+  <div class="grow"><label>Зал</label><select name="hall" onchange="this.form.submit()">{% for h in halls %}<option value="{{ h.pk }}"{% if h == hall %} selected{% endif %}>{{ h }}{% if h.name %} · {{ h.name }}{% endif %}</option>{% endfor %}</select></div>
+  <button type="button" class="btn" onclick="window.print()">{% icon 'printer' %}Печать</button></form></div>
+{% if hall %}<div class="card"><div class="sheet">
+  <div class="sheet-head"><h3>Зал №{{ hall.number }}</h3><span>Дата распечатки: {{ today|date:"d.m.Y" }}</span></div>
   {% for day, items in schedule %}
     <div class="sheet-day">{{ day }}</div>
     {% for start, end, g in items %}<div class="sheet-row">{{ start|time:"H:i" }} – {{ end|time:"H:i" }} – {{ g.section }}, {{ g.trainer }}</div>{% endfor %}
   {% empty %}<p>В этом зале занятий нет.</p>{% endfor %}
-</div>{% else %}<p class="empty">Залов пока нет.</p>{% endif %}
+</div></div>{% else %}<div class="empty">Залов пока нет</div>{% endif %}
 {% endif %}
 {% endblock %}

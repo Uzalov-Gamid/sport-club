@@ -1,26 +1,28 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load ui %}
 {% block title %}Справочники{% endblock %}
 {% block content %}
-<div class="head"><div><h1>Справочники</h1><p class="sub">Секции, тренеры, залы и пользователи. Группы занятий создаются в разделе «Расписание».</p></div></div>
-<div class="tabs">{% for k, t in tabs %}<a href="?tab={{ k }}" class="{% if tab == k %}active{% endif %}">{{ t }}</a>{% endfor %}
-  <a href="?tab=users" class="{% if tab == 'users' %}active{% endif %}">Пользователи</a></div>
+<div class="head"><div><h1>Справочники</h1><p class="sub">Группы занятий создаются в разделе «Расписание»</p></div></div>
+<div class="tabs">{% for k, t in tabs %}<a href="?tab={{ k }}" class="{% if tab == k %}on{% endif %}">{% if k == 'sections' %}{% icon 'dumbbell' 16 %}{% elif k == 'trainers' %}{% icon 'user' 16 %}{% else %}{% icon 'map-pin' 16 %}{% endif %}{{ t }}</a>{% endfor %}
+  <a href="?tab=users" class="{% if tab == 'users' %}on{% endif %}">{% icon 'key-round' 16 %}Пользователи</a></div>
 {% if tab == 'users' %}
-<div class="cols3"><div class="card"><h2>Пользователи<span class="n">{{ users|length }}</span></h2><table><thead><tr><th>Логин</th><th>Имя</th><th>Роль</th></tr></thead><tbody>
-  {% for u in users %}<tr><td><b>{{ u.username }}</b></td><td>{{ u.get_full_name|default:"—" }}</td>
-  <td>{% if u.is_superuser %}<span class="badge ok">Администратор</span>{% else %}{% for g in u.groups.all %}<span class="badge">{{ g.name }}</span>{% empty %}—{% endfor %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
-  <div class="card"><h2>Новый оператор</h2><form method="post" action="{% url 'club:user_add' %}">{% csrf_token %}
-    <div class="fields">{% for f in form %}<p class="full"><label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}</p>{% endfor %}</div>
-    <div style="margin-top:14px"><button class="btn">Создать оператора</button></div></form></div></div>
+<div class="cols3"><div class="card"><div class="card-h"><h2>Пользователи<span class="n">{{ users|length }}</span></h2></div><div class="list">
+  {% for u in users %}<div class="it"><span class="ava sm t{{ u.pk|tone }}">{{ u.username|slice:":1"|upper }}</span><div class="grow"><b>{{ u.username }}</b><div class="meta">{{ u.get_full_name|default:"без имени" }}</div></div>
+  {% if u.is_superuser %}<span class="tag dark">Администратор</span>{% else %}{% for g in u.groups.all %}<span class="tag{% if g.name == 'Администратор' %} dark{% elif g.name == 'Клиент' %} lime{% endif %}">{{ g.name }}</span>{% endfor %}{% endif %}</div>{% endfor %}</div></div>
+  <div class="card"><div class="card-h"><h2>Новый оператор</h2>{% icon 'user-plus' 18 %}</div><form method="post" action="{% url 'club:user_add' %}">{% csrf_token %}
+    <div class="fields">{% for f in form %}<p class="wide"><label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}</p>{% endfor %}</div>
+    <button class="btn" style="width:100%;margin-top:16px">Создать оператора</button></form>
+    <p class="helptext" style="margin-top:10px">Доступ клиентам выдаётся в карточке клиента.</p></div></div>
 {% else %}
-<div class="card"><div class="toolbar" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">{{ title }}<span class="n">{{ items|length }}</span></h2>
-  <button class="btn" data-open="add-dialog">＋ Добавить</button></div>
-  <table><tbody>{% for o, f in items %}<tr><td><b>{{ o }}</b>{% if tab == 'halls' and o.name %} · {{ o.name }}{% endif %}{% if tab == 'trainers' and o.phone %}<span class="empty"> · {{ o.phone }}</span>{% endif %}</td>
-    <td class="right"><button class="btn sm ghost" data-open="e{{ o.pk }}">Изменить</button>
-    <form method="post" action="{% url 'club:catalog_delete' tab o.pk %}" class="inline" data-confirm="Удалить «{{ o }}»?">{% csrf_token %}<button class="btn sm danger">Удалить</button></form></td></tr>
-  {% empty %}<tr><td class="empty">Пока пусто.</td></tr>{% endfor %}</tbody></table></div>
-<dialog id="add-dialog"><form method="post" action="{% url 'club:catalog_add' tab %}">{% csrf_token %}<h2>{{ title }}: добавить</h2>{% include 'club/_fields.html' %}
+<div class="card"><div class="card-h"><h2>{{ title }}<span class="n">{{ items|length }}</span></h2>
+  <button class="btn sm lime" data-open="add-dialog">{% icon 'plus' 15 %}Добавить</button></div><div class="list">
+  {% for o, f in items %}<div class="it"><span class="ava sm t{{ o.pk|tone }}">{% if tab == 'sections' %}{% icon 'dumbbell' 15 %}{% elif tab == 'halls' %}{{ o.number }}{% else %}{{ o.last_name|slice:":1" }}{% endif %}</span>
+    <div class="grow"><b>{{ o }}</b>{% if tab == 'halls' and o.name %}<div class="meta">{{ o.name }}</div>{% endif %}{% if tab == 'trainers' and o.phone %}<div class="meta"><span>{% icon 'phone' 13 %}{{ o.phone }}</span></div>{% endif %}</div>
+    <button class="btn sm soft icon" data-open="e{{ o.pk }}" title="Изменить">{% icon 'pencil' 15 %}</button>
+    <form method="post" action="{% url 'club:catalog_delete' tab o.pk %}" class="inline" data-confirm="Удалить «{{ o }}»?">{% csrf_token %}<button class="btn sm danger icon" title="Удалить">{% icon 'trash-2' 15 %}</button></form></div>
+  {% empty %}<div class="empty">Пока пусто</div>{% endfor %}</div></div>
+<dialog id="add-dialog"><form method="post" action="{% url 'club:catalog_add' tab %}">{% csrf_token %}<h3>{{ title }}: добавить<button type="button" class="btn sm soft icon" data-close>{% icon 'x' %}</button></h3>{% include 'club/_fields.html' %}
   <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Добавить</button></div></form></dialog>
-{% for o, f in items %}<dialog id="e{{ o.pk }}"><form method="post" action="{% url 'club:catalog_edit' tab o.pk %}">{% csrf_token %}<h2>Изменить</h2>{% include 'club/_fields.html' with form=f %}
+{% for o, f in items %}<dialog id="e{{ o.pk }}"><form method="post" action="{% url 'club:catalog_edit' tab o.pk %}">{% csrf_token %}<h3>Изменить<button type="button" class="btn sm soft icon" data-close>{% icon 'x' %}</button></h3>{% include 'club/_fields.html' with form=f %}
   <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Сохранить</button></div></form></dialog>{% endfor %}
 {% endif %}
 {% endblock %}

@@ -1,24 +1,33 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load ui %}
 {% block title %}Расписание{% endblock %}
 {% block content %}
-<div class="head"><div><h1>Расписание недели</h1><p class="sub">Нажмите на занятие, чтобы увидеть участников и отметить посещаемость</p></div>
-  {% if is_admin %}<button class="btn" data-open="new-group">＋ Новая группа</button>{% endif %}</div>
+<div class="head"><div><h1>Расписание</h1><p class="sub">Неделя {{ days.0.date|date:"j E" }} – {{ days.6.date|date:"j E" }}</p></div>
+  {% if is_admin %}<button class="btn lime" data-open="new-group">{% icon 'plus' %}Новая группа</button>{% endif %}</div>
+<div class="chips" style="margin-bottom:16px" id="filter">
+  <a href="#" class="on" data-sec="">Все секции</a>
+  {% for s, t in sections %}<a href="#" data-sec="{{ s.pk }}"><span class="dot t{{ t }}" style="background:var(--t);margin-right:6px"></span>{{ s }}</a>{% endfor %}</div>
 <div class="week">
 {% for d in days %}
-  <div class="day"><h4>{{ d.name }}</h4>
+  <div class="day{% if not d.groups %} none{% endif %}{% if d.today %} today{% endif %}"><h4>{{ d.name }}<small>{{ d.date|date:"j E"|lower }}{% if d.today %} <em>сегодня</em>{% endif %}</small></h4>
   {% for g in d.groups %}
-    <a class="slot c{{ g.color }}" href="{% url 'club:group' g.pk %}">
-      <b>{{ g.start_time|time:"H:i" }}–{{ g.end_time|time:"H:i" }}</b>
-      {{ g.section }}<small>{{ g.trainer }} · {{ g.hall }}</small>
-      <small>{{ g.clients }} / 10 чел.</small>
+    <a class="slot t{{ g.color }}" data-sec="{{ g.section_id }}" href="{% url 'club:group' g.pk %}">
+      <b>{{ g.start_time|time:"H:i" }}–{{ g.end_time|time:"H:i" }}</b><span>{{ g.section }}</span>
+      <small>{% icon 'user' 12 %}{{ g.trainer }}</small><small>{% icon 'map-pin' 12 %}{{ g.hall }}</small>
+      <small style="margin-top:6px;justify-content:space-between">{% icon 'users' 12 %}<span style="flex:1;margin:0;font-size:12px">{{ g.clients }} из 10</span></small>
+      <div class="meter t{{ g.color }}"><i class="{% if g.clients >= 10 %}full{% endif %}" style="width:{{ g.pct }}%"></i></div>
     </a>
-  {% empty %}<span class="empty">нет занятий</span>{% endfor %}
+  {% empty %}<div class="empty" style="padding:24px 0;font-size:13px">нет занятий</div>{% endfor %}
   </div>
 {% endfor %}
 </div>
 {% if is_admin %}
 <dialog id="new-group"><form method="post" action="{% url 'club:group_add' %}">{% csrf_token %}
-  <h2>Новая группа</h2>{% include 'club/_fields.html' %}
+  <h3>Новая группа<button type="button" class="btn sm soft icon" data-close>{% icon 'x' %}</button></h3>{% include 'club/_fields.html' %}
   <div class="foot"><button type="button" class="btn ghost" data-close>Отмена</button><button class="btn">Создать</button></div></form></dialog>
 {% endif %}
+<script>
+document.querySelectorAll('#filter a').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();
+  document.querySelectorAll('#filter a').forEach(function(x){x.classList.toggle('on',x===a);});
+  document.querySelectorAll('.slot').forEach(function(s){s.style.display=(!a.dataset.sec||s.dataset.sec===a.dataset.sec)?'':'none';});});});
+</script>
 {% endblock %}

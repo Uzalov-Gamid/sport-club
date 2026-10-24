@@ -1,2 +1,2 @@
-<div class="fields">{% for f in form %}<p{% if f.field.widget.input_type == 'hidden' %} hidden{% endif %}>
+<div class="fields">{% for f in form %}<p class="{% if f.field.widget.input_type == 'hidden' %}hidden{% endif %}{% if f.name == 'note' or f.name == 'name' %} wide{% endif %}"{% if f.field.widget.input_type == 'hidden' %} hidden{% endif %}>
   <label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% if f.help_text %}<span class="helptext">{{ f.help_text }}</span>{% endif %}</p>{% endfor %}</div>
